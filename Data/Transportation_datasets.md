@@ -18,7 +18,7 @@ Each row is a Census block group and contains a variety of information. Specific
 
 This dataset is the result of a stated-preference mode choice survey of train and car travelers in Switzerland in 1998. The survey examined the potential impacts of a new proposed technology -- the [Swissmetro](https://en.wikipedia.org/wiki/Swissmetro), a high-speed train traveling via maglev and vacuum -- on mode choices for inter-city travel. Although there are multiple responses per person (due to the stated preference nature of the dataset), we will treat this as a cross-sectional dataset with independent observations (ignoring any within-person correlated errors).
 
-Download the Swissmetro dataset (smdata) in tab-separated-value format: http://transp-or.epfl.ch/data/swissmetro.dat
+**Download the Swissmetro dataset (smdata) in tab-separated-value format: http://transp-or.epfl.ch/data/swissmetro.dat**
 
 See the [data description](https://transp-or.epfl.ch/documents/technicalReports/CS_SwissmetroDescription.pdf) for more details about each column (some have been slightly simplified):
 
