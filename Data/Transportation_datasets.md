@@ -19,8 +19,8 @@ Each row is a Census block group and contains a variety of information. Specific
 This dataset comes from a research project investigating bicycling and roundabouts, specifically bicyclists’ safety perceptions of roundabouts, and bicyclists’ preferences for various roundabout elements. Survey data was collected from US bicyclists in 2020. Each row is a survey response from a single person. The meaning of various column names can be taken from the [survey questions documents found here](https://github.com/singletonpa/bicycle-safety-roundabouts/tree/main/Data/Survey). More information can be found at this project's [GitHub page](https://github.com/singletonpa/bicycle-safety-roundabouts/).  
 
 **Download the bicycle safety roundabouts data (dat3):**
-* **RDS format: https://raw.github.com/singletonpa/bicycle-safety-roundabouts/main/Data/Survey/dat3.rds**
 * **CSV format: https://raw.github.com/singletonpa/bicycle-safety-roundabouts/main/Data/Survey/dat3.csv**
+* **RDS format: https://raw.github.com/singletonpa/bicycle-safety-roundabouts/main/Data/Survey/dat3.rds**
 
 These data were used in the following journal articles: 
 * Poudel, N., & Singleton P. A. (2021). Bicycle safety at roundabouts: A systematic literature review. _Transport Reviews, 41_(5), 1877207. https://doi.org/10.1080/01441647.2021.1877207
@@ -47,6 +47,38 @@ This data comes from a research project investigating the impacts of air quality
 * **Motor vehicle traffic volumes (POOLED_TRAFFIC): https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Traffic_AQ/POOLED_TRAFFIC.RDS**
 * **Weather data (CACHE_WEATHER): https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Traffic_AQ/CACHE_WEATHER.RDS**
 * **Air quality data (CACHE_AIR_QUALITY): https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Traffic_AQ/CACHE_AIR_QUALITY.RDS**
+
+## Portland commuting survey data
+
+This dataset consists of the results of a survey of ~700 commuters in the Portland, Oregon, area. The survey was a 30-minute online questionnaire conducted from October to December, 2016. Participates were recruited via email at their place of work. Respondents provided detailed information about their personal and transportation characteristics, their home and job locations, and their most recent commute trip from home to work, including answering questions about their chosen mode, how much their found their commute to be a good use of time, and how much they liked their commute. To these data were added weather information from nearby weather stations. The data were also post-processed to obtain estimated travel times and costs for all commute modes they considered using.
+
+**Download the Portland commuting dataset (pdxcommute):**
+* **CSV format, wide format: https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Portland_commute/pdxcommute_wide.csv**
+* **RDS format, wide format: https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Portland_commute/pdxcommute_wide.rds**
+* **CSV format, long format: https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Portland_commute/pdxcommute_long.csv**
+* **RDS format, long format: https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Portland_commute/pdxcommute_long.rds**
+
+The dataset includes the following types of variables: 
+* _Mode choice_: full name (CMODE6), short name (CMODE5), abbreviation (MC).
+* _Personal characteristics_: age (AGE, AGE2), race/ethnicity (RACE), gender (GEND), educational attainment (EDUC), student status (STUD), household size (HHSIZE), # HH members employed (HHMEMEMP), # HH members in school (HHMEMSTU), # HH members children (HHMEML16), # HH members older adults (HHMEM65P), household income (HHINC), disability status (DISAB), driver license (DLIC), # HH bicycles (HHVEHBIKE), # HH motor vehicles (HHVEHAUTO), transit pass (TPASS), car-share member (VSHMEMAUTO), bike-share member (VSHMEMBIKE), housing type (HTYPE), housing tenure (HTEN), # years in current residence (HDUR), self-employed (WSELF), # days worked / week (WDAYS1), work schedule flexibility (WSFLEX), satisfaction with typical commute (TYPSAT), satisfaction with typical commute travel time (TYPSATTT), ideal travel time (IDEALTT), would prefer to teleport than to commute (TPORT).
+* _Weather characteristics_: maximum temperature in *F (DAYTempMax), minimum temperature (DAYTempMin), temperature below freezing (DAYTempFrz), temperature deviation from average (DATTempAvgDev), rainy weather (DAYWeatherRAIN), misty weather (DAYWeatherIMIST), foggy weather (DAYWeatherFOG), snowy weather (DAYWeatherSNOW), precipitation in inches (DAYPrecip), any precipitation (DAYPrecipTrace), precipitation > 0.10 in (DAYPrecipTenth), precipitation > 0.25 in (DAYPrecipQuart), precipitation > 0.50 in (DAYPrecipHalf).
+* _Mode-specific variables_ (one for each mode: _W, _B, _P, _D, _T): if mode was an available option (AV), distance in miles (GDIST), travel time in minutes (GTT), cost in dollars (GCO), usefulness of commute (TAUSE3), commute liking (TELIKE3).
+
+Different versions of this dataset were used in the following publications:
+* Humagain, P., De Vos, J., & Singleton, P. A. (2021). Analyzing travel captivity by measuring the gap in travel satisfaction between chosen and alternative commute modes. _Transportation Research Part D: Transport and Environment, 97_, 102965. https://doi.org/10.1016/j.trd.2021.102965
+* Humagain, P., & Singleton, P. A. (2020). Investigating travel time satisfaction and actual versus ideal commute times: A path analysis approach. _Journal of Transport & Health, 16_, 100829. https://doi.org/10.1016/j.jth.2020.100829
+* Humagain, P., & Singleton, P. A. (2020). Would you rather teleport or spend some time commuting? Investigating individuals’ teleportation preferences. _Transportation Research Part F: Traffic Psychology and Behaviour, 74_, 458-470. https://doi.org/10.1016/j.trf.2020.09.010
+* Humagain, P., & Singleton, P. A. (2021). Exploring satisfaction with travel time profiles towards understanding intrinsic utilities of travel time. _Travel Behaviour and Society, 24_, 22-33. https://doi.org/10.1016/j.tbs.2021.02.001
+* Poudel, N., & Singleton, P. A. (2022). Analyzing simple work time and commute time tradeoffs for insights into components of the value of travel time savings. _Travel Behaviour and Society, 28_, 330-337. https://doi.org/10.1016/j.tbs.2022.04.011
+* Runa, F., & Singleton, P. A. (2021). What factors are associated with travel liking? Evidence from commuters in Portland, Oregon. _Travel Behaviour and Society, 23_, 207-215. https://doi.org/10.1016/j.tbs.2021.01.004
+* Singleton, P. A. (2017). _Exploring the positive utility of travel and mode choice_ (doctoral dissertation). Portland State University, Portland, OR. http://doi.org/10.15760/etd.3447
+* Singleton, P. A. (2017). _Exploring the positive utility of travel and mode choice_ (NITC-DIS-1005). National Institute for Transportation and Communities. http://nitc.trec.pdx.edu/research/project/1005/
+* Singleton, P. A. (2018). How useful is travel-based multitasking? Evidence from Portland, Oregon, commuters. _Transportation Research Record: Journal of the Transportation Research Board, 2672_(50), 11–22. https://doi.org/10.1177/0361198118776151
+* Singleton, P. A. (2019). Multimodal travel-based multitasking during the commute: Who does what? _International Journal of Sustainable Transportation, 14_(2), 150–162. https://doi.org/10.1080/15568318.2018.1536237
+* Singleton, P. A. (2019). Validating the Satisfaction with Travel Scale as a measure of hedonic subjective well-being for commuting in a U.S. city. _Transportation Research Part F: Psychology and Behaviour, 60_, 399–414. https://doi.org/10.1016/j.trf.2018.10.029
+* Singleton, P. A. (2019). Walking (and cycling) to well-being: Modal and other determinants of subjective well-being during the commute. _Travel Behaviour and Society, 16_, 249–261. https://doi.org/10.1016/j.tbs.2018.02.005
+* Singleton, P. A. (2020). Exploring the Positive Utility of Travel and mode choice: Subjective well-being and travel-based multitasking during the commute. In K. G. Goulias & A. W. Davis (Eds.), _Mapping the travel behavior genome_ (pp. 259–277). Cambridge, MA: Elsevier. https://doi.org/10.1016/B978-0-12-817340-4.00014-0
+* Singleton, P. A., & Clifton, K. J. (2021). Towards measures of affective and eudaimonic subjective well-being in the travel domain. _Transportation, 48_(1), 303-336. https://doi.org/10.1007/s11116-019-10055-1
 
 ## Swissmetro data
 
