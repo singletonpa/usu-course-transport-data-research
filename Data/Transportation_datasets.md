@@ -1,15 +1,5 @@
 # Transportation datasets
 
-## Bicycle safety at roundabouts survey data
-
-This dataset comes from a research project investigating bicycling and roundabouts, specifically bicyclists’ safety perceptions of roundabouts, and bicyclists’ preferences for various roundabout elements. Survey data was collected from US bicyclists in 2020. Information about this project can be found on the following site: https://github.com/singletonpa/bicycle-safety-roundabouts/tree/main
-
-**Download the bicycle safety roundabouts data (dat3)**
-* **RDS format: https://raw.github.com/singletonpa/bicycle-safety-roundabouts/main/Data/Survey/dat3.rds**
-* **CSV format: https://raw.github.com/singletonpa/bicycle-safety-roundabouts/main/Data/Survey/dat3.csv**
-
-Each row is a survey response from a single person. The meaning of various column names can be taken from the survey questions documents here: https://github.com/singletonpa/bicycle-safety-roundabouts/tree/main/Data/Survey
-
 ## Utah Smart Location Database data 
 
 This dataset includes information on the built environment and transportation accessibility characteristics of every US Census block group in Utah. Data were provided by the U.S. Environmental Protection Agency through their Smart Location Database in 2021: https://www.epa.gov/smartgrowth/smart-location-mapping#SLD
@@ -25,6 +15,16 @@ Each row is a Census block group and contains a variety of information. Specific
 * Administrative, CBSA-wide statistics, Area
 * Demographics, Employment
 * Built environment/accessibility measures: Density, Diversity, Design, Transit, Destination accessibility
+
+## Bicycle safety at roundabouts survey data
+
+This dataset comes from a research project investigating bicycling and roundabouts, specifically bicyclists’ safety perceptions of roundabouts, and bicyclists’ preferences for various roundabout elements. Survey data was collected from US bicyclists in 2020. Information about this project can be found on the following site: https://github.com/singletonpa/bicycle-safety-roundabouts/tree/main
+
+**Download the bicycle safety roundabouts data (dat3)**
+* **RDS format: https://raw.github.com/singletonpa/bicycle-safety-roundabouts/main/Data/Survey/dat3.rds**
+* **CSV format: https://raw.github.com/singletonpa/bicycle-safety-roundabouts/main/Data/Survey/dat3.csv**
+
+Each row is a survey response from a single person. The meaning of various column names can be taken from the survey questions documents here: https://github.com/singletonpa/bicycle-safety-roundabouts/tree/main/Data/Survey
 
 ## Logan non-motorized trail count data
 
