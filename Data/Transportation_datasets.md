@@ -2,24 +2,22 @@
 
 ## Utah Smart Location Database data 
 
-This dataset includes information on the built environment and transportation accessibility characteristics of every US Census block group in Utah. Data were provided by the U.S. Environmental Protection Agency through their Smart Location Database in 2021: https://www.epa.gov/smartgrowth/smart-location-mapping#SLD
-
-Get the Smart Location Database for Utah (sld_utah):
-* RDS (spatial) format: (EPA_SLD_Utah/sld_utah.rds)
-* CSV (data only) format: (EPA_SLD_Utah/sld_utah.csv)
-* Shapefile format): (EPA_SLD_Utah/sld_utah)
+This dataset includes information on the built environment and transportation accessibility characteristics of every US Census block group in Utah. Data were provided by the U.S. Environmental Protection Agency through their [Smart Location Database](https://www.epa.gov/smartgrowth/smart-location-mapping#SLD) in 2021. Get the Smart Location Database for Utah (sld_utah):
+* RDS (spatial) format: [EPA_SLD_Utah/sld_utah.rds](EPA_SLD_Utah/sld_utah.rds)
+* CSV (data only) format: [EPA_SLD_Utah/sld_utah.csv](EPA_SLD_Utah/sld_utah.csv)
+* Shapefile format): [EPA_SLD_Utah/sld_utah](EPA_SLD_Utah/sld_utah)
 
 **Download the Smart Location Database for Utah (sld_utah):**
 * **RDS (spatial) format: https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/EPA_SLD_Utah/sld_utah.rds**
 
-Each row is a Census block group and contains a variety of information. Specific column names are described in the SLD User Guide: https://www.epa.gov/sites/default/files/2021-06/documents/epa_sld_3.0_technicaldocumentationuserguide_may2021.pdf
+Each row is a Census block group and contains a variety of information. Specific column names are described in the [SLD User Guide](https://www.epa.gov/sites/default/files/2021-06/documents/epa_sld_3.0_technicaldocumentationuserguide_may2021.pdf): 
 * Administrative, CBSA-wide statistics, Area
 * Demographics, Employment
 * Built environment/accessibility measures: Density, Diversity, Design, Transit, Destination accessibility
 
 ## Bicycle safety at roundabouts survey data
 
-This dataset comes from a research project investigating bicycling and roundabouts, specifically bicyclists’ safety perceptions of roundabouts, and bicyclists’ preferences for various roundabout elements. Survey data was collected from US bicyclists in 2020. Information about this project can be found on the following site: https://github.com/singletonpa/bicycle-safety-roundabouts/tree/main
+This dataset comes from a research project investigating bicycling and roundabouts, specifically bicyclists’ safety perceptions of roundabouts, and bicyclists’ preferences for various roundabout elements. Survey data was collected from US bicyclists in 2020. More information can be found at this project's [GitHub page](https://github.com/singletonpa/bicycle-safety-roundabouts/tree/main).  
 
 **Download the bicycle safety roundabouts data (dat3):**
 * **RDS format: https://raw.github.com/singletonpa/bicycle-safety-roundabouts/main/Data/Survey/dat3.rds**
