@@ -14,7 +14,7 @@ Each row is a Census block group and contains a variety of information. Specific
 
 ## Bicycle safety at roundabouts survey data
 
-This dataset comes from a research project investigating bicycling and roundabouts, specifically bicyclists’ safety perceptions of roundabouts, and bicyclists’ preferences for various roundabout elements. Survey data was collected from US bicyclists in 2020. More information can be found at this project's [GitHub page](https://github.com/singletonpa/bicycle-safety-roundabouts/tree/main).  
+This dataset comes from a research project investigating bicycling and roundabouts, specifically bicyclists’ safety perceptions of roundabouts, and bicyclists’ preferences for various roundabout elements. Survey data was collected from US bicyclists in 2020. More information can be found at this project's [GitHub page](https://github.com/singletonpa/bicycle-safety-roundabouts/).  
 
 **Download the bicycle safety roundabouts data (dat3):**
 * **RDS format: https://raw.github.com/singletonpa/bicycle-safety-roundabouts/main/Data/Survey/dat3.rds**
@@ -24,7 +24,7 @@ Each row is a survey response from a single person. The meaning of various colum
 
 ## Logan non-motorized trail count data
 
-This dataset includes information on hourly counts of non-motorized (walking and bicycling) traffic at two specific locations in/near Logan, UT. Data are available for two infrared counters between June 2017 and February 2020. These data were obtained from the Cache County active transportation and trails planner. They also include data on air quality and weather information. More information can be found at this project's [GitHub page](https://github.com/saileshacharya1/trail-volumes-air-quality/main/). 
+This dataset includes information on hourly counts of non-motorized (walking and bicycling) traffic at two specific locations in/near Logan, UT. Data are available for two infrared counters between June 2017 and February 2020. These data were obtained from the Cache County active transportation and trails planner. They also include data on air quality and weather information. More information can be found at this project's [GitHub page](https://github.com/saileshacharya1/trail-volumes-air-quality/). 
 
 **Download the trail-volumes-air-quality data (main_data):**
 * **RDS format: https://raw.github.com/saileshacharya1/trail-volumes-air-quality/main/online-repository/data/intermediate/main_data.rds**
