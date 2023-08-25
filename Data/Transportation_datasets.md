@@ -2,10 +2,7 @@
 
 ## Utah Smart Location Database data 
 
-This dataset includes information on the built environment and transportation accessibility characteristics of every US Census block group in Utah. Data were provided by the U.S. Environmental Protection Agency through their [Smart Location Database](https://www.epa.gov/smartgrowth/smart-location-mapping#SLD) in 2021. Get the Smart Location Database for Utah (sld_utah):
-* RDS (spatial) format: [EPA_SLD_Utah/sld_utah.rds](EPA_SLD_Utah/sld_utah.rds)
-* CSV (data only) format: [EPA_SLD_Utah/sld_utah.csv](EPA_SLD_Utah/sld_utah.csv)
-* Shapefile format): [EPA_SLD_Utah/sld_utah](EPA_SLD_Utah/sld_utah)
+This dataset includes information on the built environment and transportation accessibility characteristics of every US Census block group in Utah. Data were provided by the U.S. Environmental Protection Agency through their [Smart Location Database](https://www.epa.gov/smartgrowth/smart-location-mapping#SLD) in 2021. Get the Smart Location Database for Utah (sld_utah) [here](EPA_SLD_Utah) in CSV (data only), RDS (spatial), and Shapefile formats. 
 
 **Download the Smart Location Database for Utah (sld_utah):**
 * **RDS (spatial) format: https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/EPA_SLD_Utah/sld_utah.rds**
@@ -23,11 +20,11 @@ This dataset comes from a research project investigating bicycling and roundabou
 * **RDS format: https://raw.github.com/singletonpa/bicycle-safety-roundabouts/main/Data/Survey/dat3.rds**
 * **CSV format: https://raw.github.com/singletonpa/bicycle-safety-roundabouts/main/Data/Survey/dat3.csv**
 
-Each row is a survey response from a single person. The meaning of various column names can be taken from the survey questions documents here: https://github.com/singletonpa/bicycle-safety-roundabouts/tree/main/Data/Survey
+Each row is a survey response from a single person. The meaning of various column names can be taken from the [survey questions documents found here](https://github.com/singletonpa/bicycle-safety-roundabouts/tree/main/Data/Survey). 
 
 ## Logan non-motorized trail count data
 
-This dataset includes information on hourly counts of non-motorized (walking and bicycling) traffic at two specific locations in/near Logan, UT. Data are available for two infrared counters between June 2017 and February 2020. These data were obtained from the Cache County active transportation and trails planner. They also include data on air quality and weather information. 
+This dataset includes information on hourly counts of non-motorized (walking and bicycling) traffic at two specific locations in/near Logan, UT. Data are available for two infrared counters between June 2017 and February 2020. These data were obtained from the Cache County active transportation and trails planner. They also include data on air quality and weather information. More information can be found at this project's [GitHub page](https://github.com/saileshacharya1/trail-volumes-air-quality/main/). 
 
 **Download the trail-volumes-air-quality data (main_data):**
 * **RDS format: https://raw.github.com/saileshacharya1/trail-volumes-air-quality/main/online-repository/data/intermediate/main_data.rds**
