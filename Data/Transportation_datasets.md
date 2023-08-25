@@ -2,9 +2,11 @@
 
 ## Utah Smart Location Database data 
 
-This dataset includes information on the built environment and transportation accessibility characteristics of every US Census block group in Utah. Data were provided by the U.S. Environmental Protection Agency through their [Smart Location Database](https://www.epa.gov/smartgrowth/smart-location-mapping#SLD) in 2021. Get the Smart Location Database for Utah (sld_utah) [here](EPA_SLD_Utah) in CSV (data only), RDS (spatial), and Shapefile formats. 
+This dataset includes information on the built environment and transportation accessibility characteristics of every US Census block group in Utah. Data were provided by the U.S. Environmental Protection Agency through their [Smart Location Database](https://www.epa.gov/smartgrowth/smart-location-mapping#SLD) in 2021. Get the Smart Location Database for Utah (sld_utah) [here](EPA_SLD_Utah) in CSV (data only), Rdata (data only), RDS (spatial), and Shapefile formats. 
 
 **Download the Smart Location Database for Utah (sld_utah):**
+* **CSV (data only) format: https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/EPA_SLD_Utah/sld_utah.csv**
+* **RData (data only) format: https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/EPA_SLD_Utah/sld_utah.Rdata**
 * **RDS (spatial) format: https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/EPA_SLD_Utah/sld_utah.rds**
 
 Each row is a Census block group and contains a variety of information. Specific column names are described in the [SLD User Guide](https://www.epa.gov/sites/default/files/2021-06/documents/epa_sld_3.0_technicaldocumentationuserguide_may2021.pdf): 
