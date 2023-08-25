@@ -16,13 +16,16 @@ Each row is a Census block group and contains a variety of information. Specific
 
 ## Bicycle safety at roundabouts survey data
 
-This dataset comes from a research project investigating bicycling and roundabouts, specifically bicyclists’ safety perceptions of roundabouts, and bicyclists’ preferences for various roundabout elements. Survey data was collected from US bicyclists in 2020. More information can be found at this project's [GitHub page](https://github.com/singletonpa/bicycle-safety-roundabouts/).  
+This dataset comes from a research project investigating bicycling and roundabouts, specifically bicyclists’ safety perceptions of roundabouts, and bicyclists’ preferences for various roundabout elements. Survey data was collected from US bicyclists in 2020. Each row is a survey response from a single person. The meaning of various column names can be taken from the [survey questions documents found here](https://github.com/singletonpa/bicycle-safety-roundabouts/tree/main/Data/Survey). More information can be found at this project's [GitHub page](https://github.com/singletonpa/bicycle-safety-roundabouts/).  
 
 **Download the bicycle safety roundabouts data (dat3):**
 * **RDS format: https://raw.github.com/singletonpa/bicycle-safety-roundabouts/main/Data/Survey/dat3.rds**
 * **CSV format: https://raw.github.com/singletonpa/bicycle-safety-roundabouts/main/Data/Survey/dat3.csv**
 
-Each row is a survey response from a single person. The meaning of various column names can be taken from the [survey questions documents found here](https://github.com/singletonpa/bicycle-safety-roundabouts/tree/main/Data/Survey). 
+These data were used in the following journal articles: 
+* Poudel, N., & Singleton P. A. (2021). Bicycle safety at roundabouts: A systematic literature review. _Transport Reviews, 41_(5), 1877207. https://doi.org/10.1080/01441647.2021.1877207
+* Poudel, N., & Singleton, P. A. (2022). Preferences for roundabout attributes among US bicyclists: A discrete choice experiment. _Transportation Research Part A: Policy and Practice, 155_, 316-329. https://doi.org/10.1016/j.tra.2021.11.023
+* Singleton, P. A. & Poudel, N. (2023). Bicycling comfort at roundabouts: Effects of design and situational factors. _Transportation Research Part F: Traffic Psychology and Behaviour, 94_, 227-242. https://doi.org/10.1016/j.trf.2023.02.008
 
 ## Logan non-motorized trail count data
 
