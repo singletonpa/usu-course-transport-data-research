@@ -34,6 +34,17 @@ This dataset includes information on hourly counts of non-motorized (walking and
 These data were used in the following journal article. See the article for descriptions of the dataset's variables. 
 * Acharya, S., & Singleton, P. A. (2022). Associations of inclement weather and poor air quality with non-motorized trail volumes. _Transportation Research Part D: Transport and Environment, 109_, 103337. https://doi.org/10.1016/j.trd.2022.103337
 
+## Cache County multimodal traffic volumes data
+
+This data comes from a research project investigating the impacts of air quality and weather on multimodal traffic volumes (pedestrian and motor vehicle volumes) in the same location (sites around Cache County, UT). The data include daily counts of motor vehicle volumes at 6 count stations, daily estimates of pedestrian crossing volumes at 42 traffic signals, and information about daily weather and air quality, for 2018 and 2019. 
+
+**Download the various datasets in RDS format:**
+* **Pedestrian volumes, long format (PEDESTRIAN_LONG): [Data/Traffic_AQ/CACHE_AIR_QUALITY.RDS](Data/Traffic_AQ/CACHE_AIR_QUALITY.RDS)**
+* **Pedestrian volumes, wide format (PEDESTRIAN_WIDE):**
+* **Motor vehicle traffic volumes (POOLED_TRAFFIC):**
+* **Weather data (CACHE_WEATHER):**
+* **Air quality data (CACHE_AIR_QUALITY):**
+
 ## Swissmetro data
 
 This dataset is the result of a stated-preference mode choice survey of train and car travelers in Switzerland in 1998. The survey examined the potential impacts of a new proposed technology -- the [Swissmetro](https://en.wikipedia.org/wiki/Swissmetro), a high-speed train traveling via maglev and vacuum -- on mode choices for inter-city travel. Although there are multiple responses per person (due to the stated preference nature of the dataset), we will treat this as a cross-sectional dataset with independent observations (ignoring any within-person correlated errors).
