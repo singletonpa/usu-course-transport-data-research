@@ -39,11 +39,11 @@ These data were used in the following journal article. See the article for descr
 This data comes from a research project investigating the impacts of air quality and weather on multimodal traffic volumes (pedestrian and motor vehicle volumes) in the same location (sites around Cache County, UT). The data include daily counts of motor vehicle volumes at 6 count stations, daily estimates of pedestrian crossing volumes at 42 traffic signals, and information about daily weather and air quality, for 2018 and 2019. 
 
 **Download the various datasets in RDS format:**
-* **Pedestrian volumes, long format (PEDESTRIAN_LONG): [Data/Traffic_AQ/CACHE_AIR_QUALITY.RDS](Data/Traffic_AQ/CACHE_AIR_QUALITY.RDS)**
-* **Pedestrian volumes, wide format (PEDESTRIAN_WIDE):**
-* **Motor vehicle traffic volumes (POOLED_TRAFFIC):**
-* **Weather data (CACHE_WEATHER):**
-* **Air quality data (CACHE_AIR_QUALITY):**
+* **Pedestrian volumes, long format (PEDESTRIAN_LONG): https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Traffic_AQ/PEDESTRIAN_LONG.RDS**
+* **Pedestrian volumes, wide format (PEDESTRIAN_WIDE): https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Traffic_AQ/PEDESTRIAN_WIDE.RDS**
+* **Motor vehicle traffic volumes (POOLED_TRAFFIC): https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Traffic_AQ/POOLED_TRAFFIC.RDS**
+* **Weather data (CACHE_WEATHER): https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Traffic_AQ/CACHE_WEATHER.RDS**
+* **Air quality data (CACHE_AIR_QUALITY): https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Traffic_AQ/CACHE_AIR_QUALITY.RDS**
 
 ## Swissmetro data
 
