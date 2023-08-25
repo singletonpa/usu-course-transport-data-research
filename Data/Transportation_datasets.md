@@ -22,6 +22,9 @@ This dataset includes information on hourly counts of non-motorized (walking and
 
 **Download the trail-volumes-air-quality data in rds format: https://raw.github.com/saileshacharya1/trail-volumes-air-quality/main/online-repository/data/intermediate/main_data.rds**
 
+These data were used in the following journal article: 
+* Acharya, S., & Singleton, P. A. (2022). Associations of inclement weather and poor air quality with non-motorized trail volumes. _Transportation Research Part D: Transport and Environment, 109_, 103337. https://doi.org/10.1016/j.trd.2022.103337
+
 ## Swissmetro data
 
 This dataset is the result of a stated-preference mode choice survey of train and car travelers in Switzerland in 1998. The survey examined the potential impacts of a new proposed technology -- the [Swissmetro](https://en.wikipedia.org/wiki/Swissmetro), a high-speed train traveling via maglev and vacuum -- on mode choices for inter-city travel. Although there are multiple responses per person (due to the stated preference nature of the dataset), we will treat this as a cross-sectional dataset with independent observations (ignoring any within-person correlated errors).
