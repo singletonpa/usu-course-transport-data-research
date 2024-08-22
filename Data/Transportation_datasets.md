@@ -51,8 +51,7 @@ This data comes from a research project investigating the impacts of air quality
 
 **Download the various datasets in RDS format:**
 * **Motor vehicle traffic volumes (cache_auto): https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Traffic_AQ/cache_auto.rds**
-* **Pedestrian volumes, long format (cache_ped_long): https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Traffic_AQ/cache_ped_long.rds**
-* **Pedestrian volumes, wide format (cache_ped_wide): https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Traffic_AQ/cache_ped_wide.rds**
+* **Pedestrian volumes (cache_ped_long): https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Traffic_AQ/cache_ped_long.rds**
 * **Temporal data (cache_temporal): https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Traffic_AQ/cache_temporal.rds**
 * **Weather data (cache_weather): https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Traffic_AQ/cache_weather.rds**
 * **Air quality data (cache_airqual): https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Traffic_AQ/cache_airqual.rds**
