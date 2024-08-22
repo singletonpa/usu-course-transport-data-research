@@ -47,7 +47,7 @@ These data were used in the following journal article. See the article for descr
 
 ## Cache County multimodal traffic volumes data
 
-This data comes from a research project investigating the impacts of air quality and weather on multimodal traffic volumes (pedestrian and motor vehicle volumes) in the same location (sites around Cache County, UT). The data include daily counts of motor vehicle volumes at 6 [count stations](https://www.arcgis.com/home/item.html?id=d8d3476ad6c946499c9823ae6bf2c4c2), daily estimates of pedestrian crossing volumes at 39 [traffic signals](https://udottraffic.utah.gov/atspm/), and information about daily weather and air quality, for 2018 and 2019. 
+This data comes from a research project investigating the impacts of air quality and weather on multimodal traffic volumes (pedestrian and motor vehicle volumes) in the same location (sites around Cache County, UT). The data include daily counts of motor vehicle volumes at 6 [count stations](https://www.arcgis.com/home/item.html?id=d8d3476ad6c946499c9823ae6bf2c4c2), daily estimates of pedestrian crossing volumes at 39 [traffic signals](https://udottraffic.utah.gov/atspm/), and information about daily weather and air quality, for 2018 and 2019. Specific column names are described in the [data dictionary](https://github.com/singletonpa/usu-course-transport-data-safety/blob/main/Data/Traffic_AQ/cache_ped_long.rds). 
 
 **Download the various datasets in RDS format:**
 * **Motor vehicle traffic volumes (cache_auto): https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Traffic_AQ/cache_auto.rds**
