@@ -47,14 +47,15 @@ These data were used in the following journal article. See the article for descr
 
 ## Cache County multimodal traffic volumes data
 
-This data comes from a research project investigating the impacts of air quality and weather on multimodal traffic volumes (pedestrian and motor vehicle volumes) in the same location (sites around Cache County, UT). The data include daily counts of motor vehicle volumes at 6 [count stations](https://www.arcgis.com/home/item.html?id=d8d3476ad6c946499c9823ae6bf2c4c2), daily estimates of pedestrian crossing volumes at 42 [traffic signals](https://udottraffic.utah.gov/atspm/), and information about daily weather and air quality, for 2018 and 2019. 
+This data comes from a research project investigating the impacts of air quality and weather on multimodal traffic volumes (pedestrian and motor vehicle volumes) in the same location (sites around Cache County, UT). The data include daily counts of motor vehicle volumes at 6 [count stations](https://www.arcgis.com/home/item.html?id=d8d3476ad6c946499c9823ae6bf2c4c2), daily estimates of pedestrian crossing volumes at 39 [traffic signals](https://udottraffic.utah.gov/atspm/), and information about daily weather and air quality, for 2018 and 2019. 
 
 **Download the various datasets in RDS format:**
-* **Pedestrian volumes, long format (PEDESTRIAN_LONG): https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Traffic_AQ/PEDESTRIAN_LONG.RDS**
-* **Pedestrian volumes, wide format (PEDESTRIAN_WIDE): https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Traffic_AQ/PEDESTRIAN_WIDE.RDS**
-* **Motor vehicle traffic volumes (POOLED_TRAFFIC): https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Traffic_AQ/POOLED_TRAFFIC.RDS**
-* **Weather data (CACHE_WEATHER): https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Traffic_AQ/CACHE_WEATHER.RDS**
-* **Air quality data (CACHE_AIR_QUALITY): https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Traffic_AQ/CACHE_AIR_QUALITY.RDS**
+* **Motor vehicle traffic volumes (cache_auto): https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Traffic_AQ/cache_auto.rds**
+* **Pedestrian volumes, long format (cache_ped_long): https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Traffic_AQ/cache_ped_long.rds**
+* **Pedestrian volumes, wide format (cache_ped_wide): https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Traffic_AQ/cache_ped_wide.rds**
+* **Temporal data (cache_temporal): https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Traffic_AQ/cache_temporal.rds**
+* **Weather data (cache_weather): https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Traffic_AQ/cache_weather.rds**
+* **Air quality data (cache_airqual): https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Traffic_AQ/cache_airqual.rds**
 
 ## Portland commuting survey data
 
