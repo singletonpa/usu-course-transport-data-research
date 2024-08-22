@@ -19,7 +19,7 @@ library("fastDummies")
 # Load data
 
 # Load data
-mainurl <- "https://github.com/singletonpa/2019-winter-transportation-survey/raw/main/Data/Survey%202019%20Winter/Data%204%20Anonymized/"
+mainurl <- "https://raw.github.com/singletonpa/2019-winter-transportation-survey/main/Data/Survey%202019%20Winter/Data%204%20Anonymized/"
 HH <- readRDS(file=url(paste0(mainurl, "HH.rds"), method="libcurl"))
 PER <- readRDS(file=url(paste0(mainurl, "PER.rds"), method="libcurl"))
 VEH <- readRDS(file=url(paste0(mainurl, "VEH.rds"), method="libcurl"))
