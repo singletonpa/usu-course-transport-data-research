@@ -1,3 +1,3 @@
-# usu-course-transport-data-safety
-Course materials for CEE 5255/6255 Transportation Data and Safety Analysis at Utah State University
-Last updated: Fall 2024
+# usu-course-transport-data-research
+Materials for Utah State University course CEE 5205-6205 Transportation Data Analyis and Research Methods. 
+Last updated: Fall 2025
