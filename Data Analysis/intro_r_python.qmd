@@ -1,0 +1,375 @@
+---
+title: "Introduction to Programming"
+author: "Patrick A. Singleton"
+format: 
+    html:
+        embed-resources: true
+engine: knitr
+---
+
+### Objectives & outcomes
+
+The objectives of this tutorial are to: 
+
+* Introduce the IDE software Positron. 
+* Introduce the programming language R or Python. 
+* Understand the basic aspects of R or Python in Positron. 
+
+At the end of this tutorial, you should be able to: 
+
+1. Download, install, and open Positron and R or Python. 
+2. Access help information about a function. 
+3. Create variables and assign them values. 
+4. Perform basic arithmetic and relational operations. 
+5. Write and run a basic script with comments. 
+
+```{r}
+#| echo: false
+# some code to make the tutorial work
+library(reticulate)
+```
+
+## Why programming and scripting? 
+
+Have you ever done some data process, calculation, or visualization in a program like Excel? It is great and easy to use, but it has some significant drawbacks for doing research and science. 
+
+* It can be hard to communicate what you did to others. There is no record that shows exactly what steps you took to generate the result. This is a problem, because one of the fundamental aspects of research is that it should be *reproducible*. 
+* In a related point, it is hard to be *transparent* about your research methods. 
+* Importantly, what happens if/when your data changes, or you need to make a small adjustment to your method? This happens much more often than you might think. If so, you may have to do all of the steps all over again. This can be very time-consuming, and you might not do everything exactly the same way. 
+* Although Excel is starting to integrate Python, it still can't do everything that you might want it to do, especially advanced models and analysis methods that are increasingly needed in science and research. 
+
+What is the alternative? Write a script in a programming language that is designed for statistics and data science! In this course, you can choose to learn and use either *R or Python* (or both!). In either case, you will write *scripts* that contain lines of code that perform various data processing, calculation, and visualization steps. Importantly, these scripts are step-by-step records of your method, so that someone else (including future you!) can see exactly what you did to generate your results. 
+
+## Getting started
+
+There are a few things you need to do before you begin. **First**, you need to *choose a programming language* to use. Both R and Python are widely used and have lots of support and tutorials. Ask the instructor for any other advice or tips, if you are not sure. 
+
+Once you pick your language, you have to make sure that it is installed. R or Python may already be installed on your computer. If not, follow these instructions. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+### Installing R
+
+According to the [The R Project for Statistical Computing](https://www.r-project.org/), "R is a free software environment for statistical computing and graphics." Like Python, it is a free, open-source, flexible, extendable, do-almost-anything software. It was developed primarily for analyzing data, doing statistics, and running models, but it can now do so much more: you can use it for GIS or to create figures, maps, reports, webpages (like this one!), interactive presentations, etc. 
+
+To install R on your computer, go to the [CRAN page](https://cloud.r-project.org/), select your system, download and run the `.exe` file, and follow the default prompts to install. R will likely install on your computer, so that it is accessible for all users on that machine. 
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+### Installing Python
+
+According to the [Python Software Foundation](https://www.python.org/), "Python is a programming language that lets you work more quickly and integrate your systems more effectively." Like R, it is a free, open-source, flexible, extendable, do-almost-anything software. It was developed as a flexible programming language that, through modules, can be extended to do all sorts of things. For instance, Python has a popular integration with ArcGIS Pro, to allow you to script your mapping and geospatial analysis. 
+
+To install Python on your computer, go to the [Download Python page](https://www.python.org/downloads/), select your operating system, download and run the `.exe` file, and follow the default prompts to install. Python will likely install in your user folder, so that only you can access it on that machine. 
+
+:::
+::::::::::::::
+
+**Second**, you should choose an Integrated Development Environment (IDE), basically a software application to help you do your scripting and running your code. There are many IDEs out there that do a good job. 
+
+I recommend a new free IDE called [**Positron**](https://positron.posit.co/), from the makers (Posit) of the leading R IDE, RStudio. It is built upon the popular [Visual Studio (VS) Code](https://code.visualstudio.com/) but adds more features for data science. Importantly, it is optimized for both R and Python, so you can use the same IDE and work with either programming language (or both). To download, go to the [Download Positron page](https://positron.posit.co/download.html), select your platform, download and run the `.exe` file, and follow the prompts to install. 
+
+There are other popular IDEs out there: 
+
+* R: [RStudio](https://posit.co/download/rstudio-desktop/). 
+* Python: [VS Code](https://code.visualstudio.com/), [PyCharm](https://www.jetbrains.com/pycharm/), [Jupyter](https://jupyter.org/), [Spyder](https://www.spyder-ide.org/), and others. 
+
+Once you install Positron, you'll have to get your interpreters set up. An *interpreter* is the way the IDE knows how to convert the code in your script into actions for a particular programming language. Follow [these instructions](https://positron.posit.co/interpreter-startup.html) to make sure that Positron can recognize your R or/and Python installation. 
+
+### Exploring Positron
+
+Positron has a user-friendly [layout](https://positron.posit.co/layout.html) designed for efficient programming, scripting, and general data science work. See the image below for details: 
+
+![Interface of the Positron IDE showing Activity Bar, Primary Side Bar, Editor, Panel, and Secondary Side Bar](https://positron.posit.co/images/user-interface-for-rstudio-migration.jpeg)
+
+You'll mostly be working in the *Editor*, which is where your script will be. The *Panel* (especially the Console tab) will be where your code is executed. In the *Secondary Side Bar* you'll find useful things, including variables you load or create, plots you generate, as well as an extensive help section. The *Primary Side Bar* will show your files and folder structure. 
+
+## Basic Exploration
+
+### Console
+
+The console is where your code is executed. Although we will use scripts to store and run our code (line-by-line or block-by-block), you can type directly into the console. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+You can try doing basic math in R. 
+
+```{r}
+2 + 2 - 3 # addition and subtraction
+9 * 9 # multiplication
+847 / 7 # division
+10 ^ 3 # exponentiation
+```
+
+R knows the order of operations, but it is good practice to include parentheses for clarity.
+
+```{r}
+2 ^ 2 + 5 * 3 - 9 / 2
+(2 ^ 2) + (5 * 3) - (9 / 2)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+You can try doing basic math in Python. 
+
+```{python}
+2 + 2 - 3 # addition and subtraction
+9 * 9 # multiplication
+847 / 7 # division
+10 ** 3 # exponentiation
+```
+
+Python knows the order of operations, but it is good practice to include parentheses for clarity.
+
+```{python}
+2 ** 2 + 5 * 3 - 9 / 2
+(2 ** 2) + (5 * 3) - (9 / 2)
+```
+
+:::
+::::::::::::::
+
+### Help
+
+If you're not sure how to do something, ask for help! One place to do this is in the help section. You can access this in multiple ways: 
+
+* If you know the function you need help with, type `?` in the console, followed by the name of the function. Information about the function should appear in the help section. 
+* If you have a function in your script that you need help with, put your curser on that function, and click `F1` on your keyboard. Information about the function should appear in the help section. 
+* Do a web search for what you need help with. 
+* Ask the instructor! 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+Let's try to figure out how to use the `sqrt()` function in R. 
+
+```{r}
+#| eval: false
+?sqrt
+```
+
+We see that the function `sqrt(x)` computes the square root of **x**. Let's try it. 
+
+```{r}
+sqrt(64)
+sqrt(12^2)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+Let's try to figure out how to use the `sqrt()` function in Python. 
+
+```{python}
+#| eval: false
+?sqrt
+```
+
+It doesn't exist! (Yet.) Python comes with fewer useful functions than R right out of the box. However, it is easily extendable with *modules*. In fact, `sqrt()` is a function in the `math` module. To see it, we need to first need to import the module. 
+
+```{python}
+import math
+```
+
+```{python}
+#| eval: false
+?math.sqrt
+```
+
+To use it, we have to type `module.function`. 
+
+```{python}
+math.sqrt(64)
+math.sqrt(12**2)
+```
+
+:::
+::::::::::::::
+
+### Session
+
+The session section shows all of the data, variables, objects, and plots that are generated and stored in the computer's memory. We don't have any objects yet, so let's create some! 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, you create an object using the `<-` symbol. You can assign any type of data (numbers, text, other objects) to a named object. Once that object is created, you can call that object. 
+
+```{r}
+x <- 3
+x
+y <- 4
+y
+z <- sqrt(x ^ 2 + y ^ 2)
+z
+```
+
+Notice how **x**, **y**, and **z** are now listed in the variables section. You'll see that **x** has type double ("dbl"). In a future tutorial, we'll learn more about the various data types. 
+
+You can also test relations between variables. These relational operators are useful, although two are confusing to new R users. `==` tests for equality, and `!=` tests for inequality. (`=` is an equivalent but confusing alternative to `<-`.)
+
+```{r}
+answer <- 42
+answer != 42
+z^2 == x^2 + y^2
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, you create an object using the `=` symbol. You can assign any type of data (numbers, text, other objects) to a named object. Once that object is created, you can call that object. 
+
+```{python}
+x = 3
+x
+y = 4
+y
+z = math.sqrt(x ** 2 + y ** 2)
+z
+```
+
+Notice how **x**, **y**, and **z** are now listed in the variables section. You'll see that **x** has type integer ("int") and **z** has type float. In a future tutorial, we'll learn more about the various data types. 
+
+You can also test relations between variables. These relational operators are useful, although two are confusing to new Python users. `==` tests for equality, and `!=` tests for inequality. 
+
+```{python}
+answer = 42
+answer != 42
+z ** 2 == x ** 2 + y ** 2
+```
+
+:::
+::::::::::::::
+
+## Scripts
+
+Now, let's practice the most important skill in programming: scripting. *Scripts* let you write and edit code without having to type it in line-by-line in the console. It lets you write more complex tasks, testing them incrementally, while saving your work for future use. It helps others (including your future self) see the research and data analysis process. Scripts are so important that from now on, you should spend most of your time writing lines of code in a script instead of typing in the console. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+To create a new R script, go to File... New File... R File. Save the script in some folder of your choice. (We will discuss how to use a folder structure to your advantage in an upcoming tutorial.) Notice that it will save as a ".R" file. 
+
+Now, take the text you typed into the console, and write or copy it into the script. Put each line of code on a separate line of the script. Organize topics together with spaces in between. 
+
+```{r}
+x <- 3
+y <- 4
+z <- sqrt(x ^ 2 + y ^ 2)
+```
+
+It is important to include frequent descriptive comments in your script. On a line, everything after the `#` will be commented out. 
+
+```{r}
+x <- 3
+# x <- 2
+x
+```
+
+While some people are good at reading code, most of us need words and phrases to understand what code is doing. So, err on the side of adding too many comments, at least at first. I like to put a comment at least at the start of every block of code that does one particular thing. 
+
+```{r}
+# Pythagorean theorem
+# z is the length of the hypotenuse of a 
+# right triangle with sides of length x, y
+z <- sqrt(x ^ 2 + y ^ 2)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+To create a new Python script, go to File... New File... Python File. Save the script in some folder of your choice. (We will discuss how to use a folder structure to your advantage in an upcoming tutorial.) Notice that it will save as a ".py" file. 
+
+Now, take the text you typed into the console, and write or copy it into the script. Put each line of code on a separate line of the script. Organize topics together with spaces in between. 
+
+```{python}
+x = 3
+y = 4
+z = math.sqrt(x ** 2 + y ** 2)
+```
+
+It is important to include frequent descriptive comments in your script. On a line, everything after the `#` will be commented out. 
+
+```{python}
+x = 3
+# x = 2
+x
+```
+
+While some people are good at reading code, most of us need words and phrases to understand what code is doing. So, err on the side of adding too many comments, at least at first. I like to put a comment at least at the start of every block of code that does one particular thing. 
+
+```{python}
+# Pythagorean theorem
+# z is the length of the hypotenuse of a 
+# right triangle with sides of length x, y
+z = math.sqrt(x ** 2 + y ** 2)
+```
+
+:::
+::::::::::::::
+
+To run a line or portion of your script, click on that line or highlight that portion of the script. Then, type "Ctrl-Enter" on your keyboard. You'll see the code from your script get transferred to the console, any results will be printed, and any objects will appear in the session section. 
+
+## Other tips
+
+A script is just a text file that contains the code used by the programming language. You can always view a script outside of an IDE by right clicking on it and opening with Notepad or another text viewer/editer. 
+
+Save your script often, either by clicking the "Save" icon, or keying "Ctrl-s". You don't want to lose your work! 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+To remove an object (or multiple objects) in R, use the `rm()` function. 
+
+```{r}
+rm(z)
+rm(x, y)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+To remove an object in Python, use the `del` keyword. 
+
+```{python}
+del x
+del y
+del z
+```
+
+:::
+::::::::::::::
+
+If you've been doing lots of stuff in the console, you can clean it out in Positron. (This doesn't remove any objects, it just makes the console look cleaner.) Key in "Ctrl-l" and the lines are all gone. Nice! 
+
+## Review
+
+* Can you download, install, and open Positron and R or Python? 
+* Can you access help information about a function? 
+* Can you create variables and assign them values? 
+* Can you perform basic arithmetic and relational operations? 
+* Can you write and run a script with comments? 
+
+**END**

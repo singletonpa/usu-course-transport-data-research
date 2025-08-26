@@ -1,0 +1,801 @@
+---
+title: "Data types in R"
+author: "Patrick A. Singleton"
+format: 
+    html:
+        embed-resources: true
+engine: knitr
+---
+
+### Objectives & outcomes
+
+The objectives of this tutorial are to:
+
+* Understand the difference between data types and object types. 
+* Observe how data of different types are generated in R or Python. 
+* Observe how data are stored in different object types in R or Python. 
+* Practice working with different data and objects in R or Python. 
+
+At the end of this tutorial, you should be able to:
+
+* Inspect an object to identify its contents, structure, and data type(s).
+* Create one-dimensional representations of numbers, words, and true/false.
+* Create two-dimensional representations of data in a data frame.
+* Manipulate, extract, and edit values in objects, including in a data frame.
+
+```{r}
+#| echo: false
+# some code to make the tutorial work
+library(reticulate)
+py_require("numpy")
+py_require("pandas")
+```
+
+## Overview
+
+Although online tutorials will often talk about "data types", this is confusing. I prefer to talk about two things that are separate but related: 
+
+* *Data types*: The types of data themselves. 
+* *Object types*: The types of objects that contain data. 
+
+We will start by looking quickly at basic data types, before spending more time investigating different object types. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, there are a few functions that are helpful for inspecting the types of data objects: 
+
+* `typeof()` gives the internal storage mode of an object. It is useful for the datatype of an object that contains just one type of data. 
+* `class()` gives the formal class of an object. It is useful for determining the object type. 
+* `str()` gives the internal structure of an object. It can provide both the overall object type and the various types of data within that object. 
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, the basic function for inspecting the type of a data object is `type()`. 
+
+:::
+::::::::::::::
+
+## Data types
+
+Most data can be represented as one of three types: 
+
+* *Numbers*: 
+  * Whole numbers, like 1, 5, -99, 84322. 
+  * Numbers with decimal places, like 1.33, 5.0, 0.84321. 
+  * Complex numbers with imaginary components, like 3+4i. (You probably won't use these.)
+* *Words* like "hello world", "happy", "4110 Old Main Hill". 
+* *True/false* data. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+### Data types in R
+
+R calls these basic data types: *integer*, *double* (or *numeric*), *character*, and *logical*. 
+
+```{r}
+# Integer
+class(89) # note numeric
+# to truly define an integer,
+# use capital L after number
+class(89L)
+
+# Double/numeric
+class(2.71828)
+
+# Character
+# wrap text in double quotes ""
+class("utah state")
+
+# Logical
+class(TRUE)
+# logical can also be defined
+# with capital T or F
+class(F)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+### Data types in Python
+
+Python calls these basic data types: *integer*, *float* (technically *floating-point number*), *string*, and *boolean*. 
+
+```{python}
+# Integer
+type(89)
+
+# Float
+type(2.71828)
+
+# String
+# wrap text in double quotes ""
+type("utah state")
+
+# Boolean
+type(True)
+type(False)
+```
+
+:::
+::::::::::::::
+
+## Object types
+
+There are many types of objects that can contain data. Depending on the language, these can be classified by their dimensions (one, two, three, etc.) or whether they allow a single or a mix of data types. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+### Vectors
+
+In R, a *vector* is a one-dimensional collection of data of any single type. To create a vector, use the `c()` function. 
+
+```{r}
+ints <- c(1L, 2L, 3L)
+ints
+nums <- c(7, 8 + 3, pi)
+nums
+chars <- c("true", "aggie", "night")
+chars
+logis <- c(T, T, F)
+logis
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+### Lists, Arrays, and Series
+
+Python has multiple ways to represent one-dimensional objects. 
+
+First, there is the *list*, which can be defined using square brackets `[]`. 
+
+```{python}
+mylist = [1, 2, 3]
+mylist
+```
+
+Second, using the NumPy library, you can create a one-dimensional *array* by calling the `array()` function and again using square brackets `[]`. 
+
+```{python}
+# need to run "pip install numpy"
+# in terminal first
+import numpy as np
+```
+
+```{python}
+myarray = np.array([7.0, 8 + 3, 3.14159])
+myarray
+```
+
+Third, using the Pandas library, you can create a one-dimensional *series* by calling the `Series()` function and again using square brackets `[]`. 
+
+```{python}
+# need to run "pip install pandas"
+# in terminal first
+import pandas as pd
+```
+
+```{python}
+myseries = pd.Series(["true", "aggie", "night"])
+myseries
+```
+
+:::
+::::::
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+To access part of a vector, use the square bracket notation `[]`. To get more than one element sequentially, use the sequence notation `start:end` inside the brackets. A difference in R is that the ending index is inclusive (stop on). To get more than one element not sequentially, use the `c()` function within the brackets. 
+
+```{r}
+chars[2]
+nums[2:3]
+nums[c(1,1,3)]
+```
+
+**Important note: In R, the first element of a vector is `[1]`, not `[0]` like in Python.** This is called one-based indexing. 
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+To access part of a list, NumPy array, or Pandas series, use the square bracket notation `[]`. To get more than one element sequentially, use the slice notation `start:end:step` inside the brackets. A difference in Python is that the ending index is not inclusive (stop before). To get more than one element not sequentially, use the list notation `[]`. For example: 
+
+```{python}
+mylist[0]
+myarray[1:3]
+myseries[[2,0,0]]
+```
+
+**Important note: In Python, the first element of a list/array/series is `[0]`, not `[1]` like in R.** This is called zero-based indexing.
+
+:::
+::::::
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+You can use the same bracket notation to change any value in a vector. 
+
+```{r}
+nums[c(1, 3)] <- c(2, -2)
+nums
+```
+
+You can add more elements to a vector using the same `c()` function. 
+
+```{r}
+nums <- c(nums, 0)
+nums
+```
+
+Beware: Don't try to add a datum of a different type to a vector. It will coerce the vector (change it) to a different data type based on the following rules: logical &rarr; integer &rarr; numeric &rarr; complex &rarr; character.
+
+```{r}
+mixs <- c(T, 76, "hi")
+mixs
+class(mixs)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+You can use the same bracket notation to change any value in a list/array/series. 
+
+```{python}
+myarray[2] = -2
+myarray
+```
+
+You can add more elements to a list or array using the `append()` function. 
+
+```{python}
+mylist.append(4)
+mylist
+```
+
+You can add more elements to a series, as long as they are also series, by using the `concat()` function. 
+
+```{python}
+myseries2 = pd.Series(["hello", "world"])
+myseries3 = pd.concat([myseries, myseries2], ignore_index=True)
+myseries3
+```
+
+:::
+::::::
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+For integer and numeric vectors, we can do all the typical mathematical operations.
+
+```{r}
+ints - 2
+ints * 2
+(ints - 2)^2
+2 / ints
+sqrt(ints)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+If you want to do mathematical operations on one-dimensional objects, you should use NumPy arrays or Pandas series. 
+
+```{python}
+nums1 = np.array([1,2,3])
+nums2 = pd.Series([1,2,3])
+nums1 - 2
+nums2 * 2
+(nums1 - 2) ** 2
+np.sqrt(nums2)
+```
+
+:::
+::::::::::::::
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+### Factors
+
+R has a unique type of vector called a *factor*. Although confusing at first, factors will be very helpful when modeling categorical data; thus, they are important to learn. Basically, factors bridge the gap between numeric and character data by encoding categorical variables. These values could be *ordered*---having a natural order (grades: A, B, C, D, F)---or *nominal*---unordered values (counties: Box Elder, Cache, etc.).
+
+The easiest way to create a factor is to let R do it for us. Take a character vector and apply the `as.factor()` function:
+
+```{r}
+fac1 <- c("A", "B", "B", "A", "C", "D", "A", "A")
+fac1 <- as.factor(fac1)
+fac1
+typeof(fac1)
+class(fac1)
+```
+
+Note that the "type" of a factor is an integer. That is because R is coding our text as (integer) numbers, with the characters as labels for each integer level in the factor. This is more apparent if we use the `str()` function:
+
+```{r}
+str(fac1)
+levels(fac1)
+```
+
+More formally, we can create factors using the `factor()` function, specifying the levels of the characters we want to code as numbers, in that particular order:
+
+```{r}
+fac2 <- c("A", "B", "B", "A", "C", "D", "A", "A")
+fac2 <- factor(fac2, levels = c("A", "B", "C", "D"))
+fac2
+```
+
+We can collapse levels or even remove some by making them `NA` ("Not Available" or missing):
+
+```{r}
+levels(fac2) <- c("A", "B", "CD", "CD")
+str(fac2)
+levels(fac2) <- c("A", "B", NA)
+str(fac2)
+```
+
+We even can make factors ordered, if that is relevant for the variable:
+
+```{r}
+fac3 <- c("A", "B", "B", "A", "C", "D", "A", "A")
+fac3 <- ordered(fac3, levels = c("D", "C", "B", "A"))
+str(fac3)
+```
+
+Even more formally, the `factor()` function automatically takes the character values of levels and makes them the labels, but we can change that:
+
+```{r}
+fac4 <- c("A", "B", "B", "A", "C", "D", "A", "A")
+fac4 <- factor(
+  fac4,
+  levels = c("A", "B", "C", "D"),
+  labels = c("Great", "Good", "Okay", "Poor")
+)
+str(fac4)
+```
+
+The `levels=` and `labels=` arguments within the `factor()` function are sometimes confusing. Basically:
+
+-   Use `levels` to specify the order that you want for the existing unique character strings.
+    -   By default, the order is alphabetical.
+-   Use `labels` if you want to change the character strings.
+
+```{r}
+fac5 <- c("A", "B", "B", "A", "C", "D", "A", "A")
+fac5a <- factor(fac5)
+fac5a
+fac5b <- factor(fac5, labels = c("great", "good", "okay", "fail"))
+fac5b
+fac5c <- factor(fac5, levels = c("D", "C", "B", "A"))
+fac5c
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+### Dictionaries
+
+Python has unique type of object called a *dictionary*. Basically, dictionaries are a set of *key:value* pairs, where keys are unique within a dictionary. Effectively, this creates a look-up list/array/series where you don't have to access things using an integer index. 
+
+To create a dictionary, give one or more `'key':value` pairs within curly brackets `{}`. 
+
+```{python}
+pop_dict = {'California':38332521, 'Texas':26448193, 'New York':19651127, 'Florida':19552860, 'Illinois':12882135}
+area_dict = {'California':423967, 'Texas':695662, 'New York':141297,'Florida':170312,'Illinois':149995}
+```
+
+For dictionaries, you access the values using the keys. 
+
+```{python}
+pop_dict["California"]
+area_dict["California"]
+```
+
+There is even more power if you convert a dictionary to a Pandas series. 
+
+```{python}
+pop_ser = pd.Series(pop_dict)
+area_ser = pd.Series(area_dict)
+pop_ser[["Texas","Florida"]]
+```
+
+:::
+::::::::::::::
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+### Matrices
+
+In R, a *matrix* is a two-dimensional vector, of any single data type. To create a matrix, use the `matrix()` function, and specify the data and the numbers of rows and columns. Note that matrices fill data by columns (all rows in first column, all rows in second column, etc.).
+
+```{r}
+mat1 <- matrix(data = 1:6, nrow = 3, ncol = 2)
+mat1
+class(mat1)
+```
+
+We can also create matrices sequentially by adding vectors using the functions `rbind()` (by rows) or `cbind()` (by columns).
+
+```{r}
+mat2 <- matrix(c(T, F, T, T), nrow = 2, ncol = 2)
+mat2 <- rbind(mat2, c(F, F))
+mat2 <- cbind(mat2, c(T, F, F))
+mat2
+```
+
+You can use matrix square bracket notation `[row,col]` to inspect and edit specific elements of a matrix.
+
+```{r}
+mat2[, 1] # first column
+mat2[2, ] # second row
+mat2[3, 2] # element in third row, second column
+mat2[, 3] <- c(F, T, T)
+mat2
+```
+
+Although matrices are important for sophisticated model estimation, most of that work is done behind the scenes in R. You'll rarely use matrices unless you need to do matrix algebra. 
+
+### Arrays
+
+In R, an *array* can be thought of as just a multi-dimensional matrix. They are used less frequently, so you can look into arrays on your own.
+
+```{r eval=F}
+?array
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+### Arrays
+
+In Python, we've already seen NumPy arrays as one-dimensional objects. Technically, an *array* can have any number of dimensions, including two, three, or more. To create a two-dimensional array, use the `array()` function, and specify the sets of single-dimension arrays as rows. 
+
+```{python}
+array2d = np.array([[1,2,3],[4,5,6]])
+array2d
+```
+
+In Python, arrays are organized by rows. This is somewhat different from how matrices are treated in R. 
+
+You can use square bracket notation `[row,col]` to inspect specific elements of a 2D array. You can obtain all data in a given row using `[i]`, and all data in a given column using `[:, i]`. 
+
+```{python}
+array2d[0,2]
+array2d[1,0]
+array2d[0] # first row
+array2d[:,1] # second column
+```
+
+You an also access and edit elements of an array. 
+
+```{python}
+newarr = array2d[0,:]
+newarr
+newarr[1] = 10
+newarr
+```
+
+Caution: If you create what looks like a new array from an existing array, it may not actually be a new object. This is called a `view`, but it is not always clear. Above, we first created a new array `newarr` from our original 2D array `array2d`, and then we edited an item in `newarr`. But look, it changed the original 2D array as well! 
+
+```{python}
+array2d
+```
+
+:::
+::::::::::::::
+
+### Data frames
+
+In both R and Python, *data frames* are the workhorses of data management. They are tabular representations of data, much like a spreadsheet. Basically, data frames are two dimensional collections of data: 
+
+* Each *row* is an observation, individual, or subject. 
+* Each *column* contains data for one attribute, variable, or characteristic for all rows. 
+  * Each column is typically of a single data type. 
+  * Columns may be of different data types. 
+
+There are a few great things about data frames. First, unlike a matrix or array, they can hold different types of data (i.e., numbers, text). Second, because they are the most common structures for data, many functions and models are designed to work with them. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+#### Data frames in R
+
+Base R comes pre-installed with some datasets, several of which are about transportation. Let's look at one of them: *mtcars*.
+
+```{r}
+mtcars
+```
+
+You can use same matrix bracket notation `[row,col]` to inspect data frames. Selecting a particular row gives you a one-row data frame. Selecting a particular column returns a vector of that column's type.
+
+```{r}
+mtcars[1, 1]
+mtcars[1, ]
+class(mtcars[1, ])
+mtcars[, 1]
+typeof(mtcars[, 1])
+```
+
+For columns, you can use several techniques. First is to use column numbers, like we have been doing. Second, you could also use column names in double quotes `""`. Third, you can use a dollar sign `$` followed by the column name (not in quotes). (The second and third ways are my preferred methods for selecting a single column.)
+
+```{r}
+mtcars[, "hp"]
+mtcars$wt
+```
+
+You can also select multiple columns by passing `c()` into the bracket notation, yielding a smaller data frame:
+
+```{r}
+mtcars[, c("mpg", "hp")]
+```
+
+Now, back to inspecting the dataset. Notice that *mtcars* has 32 observations of 11 variables.
+
+```{r}
+# ?mtcars
+str(mtcars)
+```
+
+Each of these variables is of type *numeric*, but they don't have to be. Looking at the help information, the "am" variable is actually categorical. Let's convert this to a factor and edit the level text:
+
+```{r}
+mycars <- mtcars
+mycars$am <- factor(
+  mycars$am,
+  levels = c(0, 1),
+  labels = c("automatic", "manual")
+)
+str(mycars$am)
+```
+
+Nice! You are beginning to see how useful data frames can be.
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+#### Data frames in Python
+
+In Python, data frames are created using the `DataFrame()` function from Pandas. They are defined similar to dictionaries, but from Pandas `series`, this time using `colname:series` pairs within curly brackets `{}`. 
+
+```{python}
+statedata = pd.DataFrame({"pop":pop_ser, "area":area_ser})
+statedata
+```
+
+Let's look at the same *mtcars* data frame from R, but now in Python. (You won't be able to do this yourself.)
+
+```{python}
+mycars = r.mtcars
+mycars
+```
+
+Indexing (accessing specific rows/columns) is a little tricky in Python, because there are many ways to do it. There are numbered indices, but also named indices (column headings). To index using numbers, use `.iloc`. 
+
+```{python}
+mycars.iloc[0, 0] # first row, first column
+mycars.iloc[0, :] # first row, all columns
+type(mycars.iloc[0, ])
+mycars.iloc[: , 0] # all rows, first column
+type(mycars.iloc[:, 1])
+```
+
+To index using names, use `.loc`. 
+
+```{python}
+mycars.loc[: , "hp"] # all rows, hp column
+mycars.loc["Honda Civic", ["mpg", "hp"]] # one row, two columns
+```
+
+:::
+::::::::::::::
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+### Lists
+
+In R, the final object type we will cover is the *list*. Lists are hard to understand precisely because they are so flexible. A list is basically a vector of any number of other objects, and it can accommodate multiple data types. (A list can even contain other lists, recursively.)
+
+```{r}
+mylist <- list(1L, "one", 1.00, T, c(1:4))
+str(mylist)
+```
+
+Lists are particularly useful when writing functions (advanced stuff!), because you can return data of different types in one output. We'll cover that later. For now, you can read about lists on your own.
+
+```{r eval=F}
+?list
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+### Lists
+
+In Python, we've already seen a *list*, as a one-dimensional data object. Technically, lists in Python can also contain data of multiple types, but (unlike R) they cannot contain other objects. 
+
+```{python}
+newlist = [1, "one", 1., True]
+newlist
+```
+
+:::
+::::::::::::::
+
+## Other tips
+
+### Data frame rows and columns
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+For a data frame in R, you can inspect (and edit) the row and column names using `rownames()` and `colnames()` functions. You can also call the equivalent `row.names()` and `names()` functions.
+
+```{r}
+rownames(mtcars)
+colnames(mtcars)
+```
+
+If you have a long data frame (e.g., hundreds of rows), you can look at the first (or last) few rows by using the `head()` and `tail()` functions.
+
+```{r}
+head(mycars)
+tail(mycars, 3)
+```
+
+Often, you want to know how big your data frame is. You can use `dim()` or `nrow()` and `ncol()`.
+
+```{r}
+dim(mycars)
+nrow(mycars)
+ncol(mycars)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+For a data frame in Python, you can inspect (and edit) the row and column names using `.index` and `.columns` properties, respectively. 
+
+```{python}
+mycars.index
+mycars.columns
+```
+
+If you have a long data frame (e.g., hundreds of rows), you can look at the first (or last) few rows by using the `head()` and `tail()` functions.
+
+```{python}
+mycars.head()
+mycars.tail(3)
+```
+
+Often, you want to know how big your data frame is. You can use `.shape` or `len()` and `.columns.size`.
+
+```{python}
+mycars.shape
+len(mycars)
+len(mycars.columns)
+mycars.columns.size
+```
+
+:::
+::::::::::::::
+
+### Manipulating text
+
+Working with and manipulating text data is one of the harder and more confusing things to do. (We'll discuss another challenging data type, date/time data, later.) 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+Here are some resources to learn more in R: 
+
+* [Strings chapter](https://r4ds.hadley.nz/strings.html) in the *R for Data Science* online textbook. 
+* [Strings in R Tutorial](https://www.datacamp.com/tutorial/strings-in-r) from DataCamp. 
+
+Some of the most useful functions are: `paste()`, `grep()`, `gsub()`, as demonstrated in the following examples:
+
+```{r}
+# paste: combine elements into character
+paste("The number", "is", 5L, sep = " ")
+```
+
+```{r}
+# grep: finds matches to a pattern
+grep("Merc", row.names(mtcars), value = T)
+```
+
+```{r}
+# gsub: replaces text with other text
+gsub("Merc", "Mercedes", row.names(mtcars))
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+Here are some resources to learn more in Python: 
+
+* [Vectorized String Operations chapter](https://jakevdp.github.io/PythonDataScienceHandbook/03.10-working-with-strings.html) in the *Python Data Science Handbook* online textbook. 
+* [Strings and Character Data in Python](https://realpython.com/python-strings/) from the RealPython website. 
+
+:::
+::::::::::::::
+
+## Additional resources
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+There are many online resources for learning the basics of R. Here are some recommended resources: 
+
+* The *R for Data Science (second edition)* by Hadley Wickham et al. is [available online](https://r4ds.hadley.nz/), and includes information about vectors of different types (logical, numbers, strings), factors, and data structures. 
+* W3 Schools provides multiple R tutorials, including one on [R Data Structures](https://www.w3schools.com/r/r_data_structures.asp). 
+* DataCamp offers an [Introduction to R](https://www.datacamp.com/courses/free-introduction-to-r) course that covers vectors, matrices, factors, data frames, and lists. 
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+There are many online resources for learning the basics of Python. Here are some recommended resources: 
+
+* The *Python Data Science Handbook* by Jake VanderPlas is [available online](https://jakevdp.github.io/PythonDataScienceHandbook/), and includes introductions to NumPy and Pandas. 
+* The NumPy website has a [user guide](https://numpy.org/devdocs/user/index.html) that contains a quickstart guide and an "absolute basics for beginners" tutorial. 
+* The Pandas website has a [user guide](https://pandas.pydata.org/docs/user_guide/index.html) that contains a 10-minute tutorial and an introduction to data structures. 
+* W3 Schools provides multiple tutorials on [Data Science (with Python)](https://www.w3schools.com/datascience/default.asp), [NumPy](https://www.w3schools.com/python/numpy/default.asp), and [Pandas](https://www.w3schools.com/python/pandas/default.asp). 
+* DataCamp offers an [Introduction to Python](https://www.datacamp.com/courses/intro-to-python-for-data-science) course that covers lists, functions and packages, and NumPy. 
+
+:::
+::::::::::::::
+
+## Review
+
+* Can you inspect an object to identify its contents, structure, and data type(s)?
+* Can you create one-dimensional representations of numbers, words, and true/false?
+* Can you create two-dimensional representations of data in a data frame?
+* Can you manipulate, extract, and edit values in objects, including in a data frame?
+
+**END**
