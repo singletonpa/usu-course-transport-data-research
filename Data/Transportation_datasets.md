@@ -39,6 +39,12 @@ This dataset comes from a research project that conducted a 6-day travel diary s
 
 This dataset includes information on hourly counts of non-motorized (walking and bicycling) traffic at two specific locations in/near Logan, UT. Data are available for two infrared counters between June 2017 and February 2020. These data were obtained from the Cache County active transportation and trails planner. They also include data on air quality and weather information. More information can be found at this project's [GitHub page](https://github.com/saileshacharya1/trail-volumes-air-quality/). 
 
+**Download the various datasets in CSV format:**
+* **Boulevard trail counts (Boulevard): https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Logan_trail_counts/Boulevard.csv**
+* **Green Canyon trail counts (GreenCanyon): https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Logan_trail_counts/GreenCanyon.csv**
+* **Weather data (Weather): https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Logan_trail_counts/Weather.csv**
+* **Air quality data (AirQuality): https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Logan_trail_counts/AirQuality.csv**
+
 **Download the trail-volumes-air-quality data (main_data):**
 * **RDS format: https://raw.github.com/saileshacharya1/trail-volumes-air-quality/main/online-repository/data/intermediate/main_data.rds**
 
