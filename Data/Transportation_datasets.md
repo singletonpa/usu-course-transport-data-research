@@ -101,6 +101,26 @@ Different versions of this dataset were used in the following publications:
 * Singleton, P. A. (2020). Exploring the Positive Utility of Travel and mode choice: Subjective well-being and travel-based multitasking during the commute. In K. G. Goulias & A. W. Davis (Eds.), _Mapping the travel behavior genome_ (pp. 259–277). Cambridge, MA: Elsevier. https://doi.org/10.1016/B978-0-12-817340-4.00014-0
 * Singleton, P. A., & Clifton, K. J. (2021). Towards measures of affective and eudaimonic subjective well-being in the travel domain. _Transportation, 48_(1), 303-336. https://doi.org/10.1007/s11116-019-10055-1
 
+## Utah crash data segments
+
+Utah Department of Public Safety (DPS), Utah Highway Patrol, and UDOT maintain a website (designed/hosted by the company Numetric) called [Utah Crash Summary](https://udps.numetric.net/utah-crash-summary#/). (They have [other dashboards](https://highwaysafety.utah.gov/crash-data/).). The online dashboard has functionality for searching or filtering data and viewing trends. Using the drop-down with Introduction, you can see visualizations about who, why, where, when, etc. You can get data back to 2010, and filter by many different fields. Also, you can download a limited number of fields with information (columns) about each crash (rows).
+
+I have processed the longer and more detailed Numetric crash data (see above) along with segment-level roadway data from other Utah data sources (see below) to create a file that includes the following information about roadway segments on all numbered highways in Utah. This information can be used to perform crash data modeling as well as conduct before/after analyses for roadways segments.
+
+* Basic segment information: route number (ROUTE), starting and ending mileposts (MP_BEG, MP_END), segment length (DIST), functional class (FUNCLASS), urban or rural area type (URBAN), and speed limit (SPEEDLIM).
+* Lane and other information: thru lane width in feet (LN_THRU_WIDTH); the number of lanes of various types (LN_): total (TOTAL), thru (THRU), left turn (LTURN), right turn (RTURN), two-way (TWOWAY), two-way median (TWMED), acceleration (ACCEL), deceleration (DECEL), passing (PASS), auxiliary (AUX), high-occupancy vehicle (HOV), rapid transit (TRAN), bicycle (BIKE), gravel (GRAVEL), and other (OTHER); the number of left and right shoulders (LN_LSHLDR, LN_RSHLDR); and the number of painted and raised center islands (LN_ISLPNT, LN_ISLRSD).
+* The year (YEAR), 2017 through 2023.
+* Traffic volume information, for that year: annual average daily traffic (AADT), and the proportion of AADT composed of single-unit trucks (SUTRK) and combined unit trucks (CUTRK).
+* Crash information, for that year: (CRASH_): total (ALL), by injury severity (K, A, B, C, O), single-vehicle (ONEVEH), improperly restrained or unrestrained (SEATBELT), and pedestrian and bicycle (PED, BIKE).
+
+**Download the dataset (crashes_segments) and data processing scripts**
+* **CSV format: https://raw.githubusercontent.com/singletonpa/usu-course-transport-data-research/refs/heads/main/Data/Utah_crash_data_segments/crashes_segments.csv**
+* **RDS format: https://raw.githubusercontent.com/singletonpa/usu-course-transport-data-research/refs/heads/main/Data/Utah_crash_data_segments/crashes_segments.rds**
+* R scripts:
+  * Processing crash data: [utah_crashes.R](https://raw.githubusercontent.com/singletonpa/usu-course-transport-data-research/refs/heads/main/Data/Utah_crash_data_segments/utah_crashes.R)
+  * Processing segments: [utah_roads.R](https://raw.githubusercontent.com/singletonpa/usu-course-transport-data-research/refs/heads/main/Data/Utah_crash_data_segments/utah_roads.R)
+  * Processing other data: [utah_roadway.R](https://raw.githubusercontent.com/singletonpa/usu-course-transport-data-research/refs/heads/main/Data/Utah_crash_data_segments/utah_roadway.R) and [utah_aadt.R](https://raw.githubusercontent.com/singletonpa/usu-course-transport-data-research/refs/heads/main/Data/Utah_crash_data_segments/utah_aadt.R)
+
 ## Swissmetro data
 
 This dataset is the result of a stated-preference mode choice survey of train and car travelers in Switzerland in 1998. The survey examined the potential impacts of a new proposed technology -- the [Swissmetro](https://en.wikipedia.org/wiki/Swissmetro), a high-speed train traveling via maglev and vacuum -- on mode choices for inter-city travel. Although there are multiple responses per person (due to the stated preference nature of the dataset), we will treat this as a cross-sectional dataset with independent observations (ignoring any within-person correlated errors).
