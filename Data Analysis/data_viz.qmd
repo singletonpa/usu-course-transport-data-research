@@ -1,0 +1,1173 @@
+---
+title: "Data visualization"
+author: "Patrick A. Singleton"
+format: 
+    html:
+        embed-resources: true
+engine: knitr
+knitr:
+  opts_knit:
+    root.dir: ".."
+---
+
+### Objectives & outcomes
+
+The objectives of this tutorial are to: 
+
+* Learn how to merge datasets together based on a common key/column. 
+* Learn how to process dates into a data format and extract information. 
+* Understand basic types of figures for displaying information about a single variable, multiple groups, and two variables. 
+* Practice creating figures to visualize data of different types. 
+
+At the end of this tutorial, you should be able to: 
+
+* Merge or join two datasets together based on a common key/column. 
+* Process dates and extract information. 
+* Determine which figures are appropriate for visualizing the following: the composition of a single categorical variable, the distribution of a single continuous variable, comparisons between two (or more) groups or variables, and relationships between two variables. 
+* Create basic versions of different figure types: bar chart, stacked bar chart, box plot, histogram, and scatter diagram. 
+
+```{r}
+#| echo: false
+# some code to make the tutorial work
+library(reticulate)
+py_require("numpy")
+py_require("pandas")
+py_require("matplotlib")
+py_require("seaborn")
+py_require("plotnine")
+```
+
+### Transportation dataset
+
+For this tutorial, we will use data from the *Logan non-motorized trail count data* project. The datasets include information on daily counts of non-motorized (walking and bicycling) traffic at two locations: along the Boulevard Trail in Logan (*Boulevard*), and along a trail in Green Canyon (*GreenCanyon*). There are also weather (*Weather*) and air quality (*AirQuality*) data for the same dates. You can access these data from the [Transportation datasets](https://github.com/singletonpa/usu-course-transport-data-research/blob/main/Data/Transportation_datasets.md) page on GitHub. 
+
+This time, instead of downloading the data and then loading it into Positron from somewhere on our computer, we will load the data directly from GitHub, using the direct link. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Load data from GitHub
+Boulevard <- read.csv(file=url("https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Logan_trail_counts/Boulevard.csv", method="libcurl"))
+GreenCanyon <- read.csv(file=url("https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Logan_trail_counts/GreenCanyon.csv", method="libcurl"))
+Weather <- read.csv(file=url("https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Logan_trail_counts/Weather.csv", method="libcurl"))
+AirQuality <- read.csv(file=url("https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Logan_trail_counts/AirQuality.csv", method="libcurl"))
+
+# Inspect
+str(Boulevard)
+str(GreenCanyon)
+str(Weather)
+str(AirQuality)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python}
+# Load modules
+import pandas as pd
+import numpy as np
+
+# Changing setting until pandas 3.0
+pd.options.mode.copy_on_write = True
+
+# Load data from GitHub
+Boulevard = pd.read_csv("https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Logan_trail_counts/Boulevard.csv")
+GreenCanyon = pd.read_csv("https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Logan_trail_counts/GreenCanyon.csv")
+Weather = pd.read_csv("https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Logan_trail_counts/Weather.csv")
+AirQuality = pd.read_csv("https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Logan_trail_counts/AirQuality.csv")
+
+# Inspect
+Boulevard.info()
+GreenCanyon.info()
+Weather.info()
+AirQuality.info()
+```
+
+:::
+::::::::::::::
+
+## Data processing
+
+### Merging
+
+For this tutorial, we will want to merge our various datasets together so that we can visualize and compare them. To *merge or join* two datasets together, you must identify a common set of keys (a common column) that are in both datasets. For these data, it is "Date". If there are other columns with the same name in each dataset, it may be useful to rename them before you merge them together. For these data, "Count" is in both the *Boulevard* and *GreenCanyon* datasets. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, you can rename a column or set of columns by assigning new values to `names(dataset)`. You can merge two datasets together using the `merge()` function, specifying the common column `by=` and (if there is not a 1:1 match) whether to keep all in the first and/or keep all in the second. 
+
+```{r}
+# Rename columns
+names(Boulevard) <- c("Date", "CountBL")
+names(GreenCanyon) <- c("Date", "CountGC")
+
+# Merging data together using common column "Date"
+dat <- merge(Boulevard, GreenCanyon, by="Date", all.x=T, all.y=T)
+dat <- merge(dat, Weather, by="Date", all.x=T, all.y=T)
+dat <- merge(dat, AirQuality, by="Date", all.x=T, all.y=T)
+str(dat)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, you can rename a column or set of columns by assigning new values to `.rename()`. You can merge two datasets together using the `merge()` function, specifying the common column `on=` and (if there is not a 1:1 match) whether to do a left, right, outer, or inner join. 
+
+```{python}
+# Rename columns
+Boulevard.rename(columns={'Count':'CountBL'}, inplace=True)
+GreenCanyon.rename(columns={'Count':'CountGC'}, inplace=True)
+
+# Merging data together using common column 'Date'
+dat = pd.merge(Boulevard, GreenCanyon, on='Date', how='outer')
+dat = pd.merge(dat, Weather, on='Date', how='outer')
+dat = pd.merge(dat, AirQuality, on='Date', how='outer')
+dat.info()
+```
+
+:::
+::::::::::::::
+
+### Dates
+
+Notice that our new dataset has the "Date" column stored as a character/string type. It can be very useful to convert dates and/or times to special formats. Across programming languages, there are common codes (*strftime*) for different ways to represent portions and formats of date, for instance: 
+
+* `%Y`: Four-digit year (e.g., 2023)
+* `%m`: Month as a zero-padded number (01-12)
+* `%d`: Day of the month as a zero-padded number (01-31)
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+R has a special format for dates (without times), which can convert text to dates using the `as.Date()` function. You will want to specify the format that the dates are stored in, using `format=`. 
+
+```{r}
+# Format date
+dat$Date <- as.Date(dat$Date, format="%Y-%m-%d")
+str(dat$Date)
+summary(dat$Date)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+Python has a special format for dates and times, which can convert using the `to_datetime` function. You will want to specify the format that the dates are stored in, using `format=`. 
+
+```{python}
+# Format date
+dat['Date'] = pd.to_datetime(dat['Date'], format='%Y-%m-%d')
+dat['Date'].info()
+dat['Date'].describe()
+```
+
+:::
+::::::::::::::
+
+The nice thing is that, once we have our "Date" column in the date format, we can use this to extract relevant information about the date, beyond how it was originally stored. For instance, we can get: 
+
+* `%b`: Abbreviated month name (e.g., Jan, Feb)
+* `%B`: Full month name (e.g., January, February)
+* `%a`: Abbreviated weekday name (e.g., Sun, Mon)
+* `%A`: Full weekday name (e.g., Sunday, Monday)
+
+Let's add the year, month, and weekday of the date to our dataset. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, we use the `strftime()` function, specifying the desired result in the `format=` parameter. 
+
+```{r}
+# Extract other info from date
+dat$Year <- strftime(dat$Date, format="%Y")
+dat$Month <- strftime(dat$Date, format="%m")
+dat$Weekday <- strftime(dat$Date, format="%a")
+str(dat[,c("Year", "Month", "Weekday")])
+summary(dat[,c("Year", "Month", "Weekday")])
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, we can use the `strftime()` function from the `datetime` module, specifying the desired result. 
+
+```{python}
+# Extract other info from date
+dat['Year'] = dat['Date'].dt.strftime('%Y')
+dat['Month'] = dat['Date'].dt.strftime('%b')
+dat['Weekday'] = dat['Date'].dt.strftime('%a')
+dat[['Year', 'Month', 'Weekday']].info()
+dat[['Year', 'Month', 'Weekday']].describe()
+```
+
+:::
+::::::::::::::
+
+### Factors and categories
+
+Notice that the resulting information we extracted from "Date" is text, with a limited number of categories (years, months, weekdays). It would be useful to encode that text as a more convenient format that would allow us to do more sophisticated analyses later. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+#### Factors
+
+In R, we have *factors* that encode a categorical variable's text as numbers. We can create a factor from a text column using the `factor()` function. We need to specify at least the current `levels=` of the categories, in the order we want them to be in. Optionally, we can change the text that represents them using the `labels=` parameter. I rarely do this, only sometimes when the original text is very long. 
+
+```{r}
+# Convert text to factor
+dat$Year <- factor(dat$Year, levels=c("2018", "2019"))
+dat$Month <- factor(dat$Month, levels=c("01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"), 
+    labels=c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))
+dat$Weekday <- factor(dat$Weekday, levels=c("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"))
+str(dat[,c("Year", "Month", "Weekday")])
+summary(dat[,c("Year", "Month", "Weekday")])
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+#### Categoricals
+
+In Python, we have *categoricals* that encode a categorical variable's text as numbers. We can create a factor from a text column using the `Categorical()` function from `pandas`. We need to specify the current values as the `categories=`, in the order we want them to be in. 
+
+```{python}
+# Convert text to factor
+dat['Year'] = dat['Year'].astype('category')
+month_labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+dat['Month'] = pd.Categorical(dat['Month'], categories=month_labels)
+weekday_labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+dat['Weekday'] = pd.Categorical(dat['Weekday'], categories=weekday_labels)
+del month_labels, weekday_labels
+dat[['Year', 'Month', 'Weekday']].info()
+dat[['Year', 'Month', 'Weekday']].describe()
+```
+
+:::
+::::::::::::::
+
+## Visualizing the composition of a single categorical variable
+
+When you are trying to visualize the composition of one categorical variable, you have a few options. The most common chart types are **pie charts** and **bar or column charts**. 
+
+These charts display the frequency or percentage of observations of that variable in each category. So, first, we must create a table with these frequencies/proportions. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+Let's create a new variable for whether it snowed or not. Then, we'll create a frequency table using `table()` and a proportion table using `proportion()`. 
+
+```{r}
+# Create new variable
+dat$Snowed <- ifelse(dat$Snow > 0, T, F)
+
+# Frequency table
+tabf1 <- table(dat$Snowed)
+tabf1
+
+# Proportion table
+tabp1 <- proportions(tabf1)
+tabp1
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+First, we should load modules that will be useful for creating figures in Python. These are: 
+
+* `matplotlib`: [Matplotlib: Visualization with Python](https://matplotlib.org/)
+* `seaborn`: [seaborn: statistical data visualization](https://seaborn.pydata.org/)
+
+```{python}
+# Load modules
+import matplotlib.pyplot as plt
+import seaborn as sns
+```
+
+Let's create a new variable for whether it snowed or not. Then, we'll create a frequency table using `.value_counts()` and a proportion table using `.value_counts(normalize=True)`. 
+
+```{python}
+# Create new variable
+dat['Snowed'] = np.where(dat['Snow'] > 0, True, False)
+
+# Frequency table
+tabf1 = dat['Snowed'].value_counts()
+tabf1.index = ['False','True']
+tabf1
+
+# Proportion table
+tabp1 = dat['Snowed'].value_counts(normalize=True)
+tabp1.index = ['False','True']
+tabp1
+```
+
+:::
+::::::::::::::
+
+### Pie chart
+
+A **pie chart** may be appropriate if you have a small number of categories are you only care about the percentage in each category. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, you can create them using the `pie()` graphical function. 
+
+```{r}
+# Pie chart
+pie(tabp1, labels=paste(names(tabp1), " (", round(100*tabp1), "%)", sep=""), 
+    clockwise=T, col=c("#A2AAAD", "#0F2439"), 
+    main="Snowed or not")
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In R, you can create them using the `pie()` graphical function from `mathplotlib.pyplot`. 
+
+```{python}
+# Pie chart
+_ = plt.pie(tabp1, labels=[f"{name} ({count}, {round(100 * pct)}%)" for name, count, pct in zip(tabp1.index, tabf1, tabp1)], 
+    colors=["#A2AAAD", "#0F2439"], 
+    startangle=90, counterclock=True)
+_ = plt.title("Snowed or not")
+_ = plt.axis("equal")
+plt.show()
+```
+
+:::
+::::::::::::::
+
+Although ubiquitous, pie charts are generally not as effective as other types of charts because people have difficulty perceiving areas and angles. Instead, it is often cleaner to use one of the following alternatives. 
+
+### Bar/column chart
+
+A **bar chart** displays the frequency of a small number of categories using the length of horizontal bars. A **column chart** presents the same information vertically. A few tips: 
+
+* If the names of the various categories are long, a bar chart is usually better, because the labels will have more space to print horizontally without crowding adjacent categories (as in the column chart). The same thing is true as the number of categories increases. 
+* If categories are truly unordered, then it often looks best use a bar chart and arrange the categories in descending order from largest to smallest. If categories are ordered, then a column chart that retains the natural ordering might be more intuitive. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, you can create them using the `barplot()` graphical function. 
+
+```{r}
+# Column chart
+barplot(tabf1, las=1, col=c("#A2AAAD", "#0F2439"), 
+        ylab="Frequency", xlab="", 
+        main="Snowed or not")
+
+# Bar chart
+barplot(tabf1, horiz=T, las=1, col=c("#A2AAAD", "#0F2439"), 
+        ylab="", xlab="Frequency", 
+        main="Snowed or not")
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In R, you can create them using the `bar()` and `barh()` graphical functions.  
+
+```{python}
+# Column chart
+_ = plt.bar(tabf1.index, tabf1, color=["#A2AAAD", "#0F2439"])
+_ = plt.xlabel("")
+_ = plt.ylabel("Frequency")
+_ = plt.title("Snowed or not")
+plt.show()
+
+# Column chart
+_ = plt.barh(tabf1.index, tabf1, color=["#A2AAAD", "#0F2439"])
+_ = plt.xlabel("")
+_ = plt.ylabel("Frequency")
+_ = plt.title("Snowed or not")
+plt.show()
+```
+
+:::
+::::::::::::::
+
+## Visualizing the distribution of a single continuous variable
+
+When you are trying to visualize the distribution of one continuous variable, you have different options. The most common chart types are **box plots** and **histograms**. These charts display the distribution of observations of that variable. 
+
+### Box plot
+
+A **box plot** (sometimes a box-and-whiskers plot) presents quartile-based measures of the distribution of a continuous variable. Usually, a box plot will contain the following information
+
+* *IQR*: The box extends from the first quartile to the third quartile, spanning the interquartile range. 
+* *Median*: The line inside the box is the second quartile (median). 
+* *Outliers*: The whiskers usually extend to 1.5 times the IQR, and any observations beyond are considered to be outliers. 
+
+Like bar charts, box plots can be displayed horizontally or vertically. The default is vertically, but (like with bar charts) a horizontal alignment can often be easier to visualize, in part because the numerical values are shown horizontally like on a number line. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, box plots can be created using the `boxplot()` function. 
+
+```{r}
+# Vertical box plot
+boxplot(dat$CountBL, las=1, col="#0F2439", 
+        ylab="Daily volume", main="Box plot of Boulevard Trail use")
+
+# Horizontal box plot
+boxplot(dat$CountBL, horizontal=T, las=1, col="#0F2439", 
+        xlab="Daily volume", main="Box plot of Boulevard Trail use")
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, box plots can be created using the `boxplot()` function. 
+
+```{python}
+# Vertical box plot
+_ = plt.boxplot(dat['CountBL'], patch_artist=True, boxprops=dict(facecolor='#0F2439'))
+_ = plt.ylabel("Daily volume")
+_ = plt.title("Box plot of Boulevard Trail use")
+_ = plt.xticks([1], [''])  # Remove x-axis label
+plt.show()
+
+# Horizontal box plot
+_ = plt.boxplot(dat['CountBL'], vert=False,
+        patch_artist=True, boxprops=dict(facecolor='#0F2439'))
+_ = plt.xlabel("Daily volume")
+_ = plt.title("Box plot of Boulevard Trail use")
+_ = plt.yticks([1], [''])  # Remove y-axis label
+plt.show()
+```
+
+:::
+::::::::::::::
+
+### Histogram
+
+**Histograms** look like column charts, but they are actually an approximation of the distribution of the continuous variable. (When a categorical variable has many ordered categories, a column chart begins to look very similar to a histogram.) They split the observations into several categories and then plot each category's frequency or proportion. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, they can be created using the `hist()` graphical function. A few notes: 
+
+* You can accept the default categorization (which doesn't look good in many cases), or you can specify the categorization using the `breaks` argument in the `hist()` function. See `?hist` for details. 
+* By default, the categories are right-closed. This means that a category `(14,16]` will include observations of 16 but not observations of 14. 
+
+```{r}
+# Histogram
+hist(dat$CountBL, las=1, col="#0F2439", 
+     xlab="Daily volume", main="Box plot of Boulevard Trail use")
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, they can be created using the `hist()` graphical function. 
+
+```{python}
+# Histogram
+_ = plt.hist(dat["CountBL"], color="#0F2439")
+_ = plt.xlabel("Daily volume")
+_ = plt.title("Box plot of Boulevard Trail use")
+plt.show()
+```
+
+:::
+::::::::::::::
+
+## Visually comparing or examining relationships among two variables
+
+Sometimes you want to compare the composition or distribution of multiple (similar) variables or multiple groups on the same variable, or you want to examine potential relationships or associations between two variables. 
+
+### Two categorical variables
+
+When you have two categorical variables, the same chart types that we have used can be extended to multiple groups: **bar/column charts**. 
+
+For instance, we could investigate the relationship between snowed and month. Let's inspect the frequency/proportion of these variables. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, we can still use the same `table()` and `proportion()` functions. For proportions, we need to specify if we are dividing by row totals (`margin=1`), by column totals (`margin=2`), or both (`margin=c(1,2)`). 
+
+```{r}
+# Tables
+tabf2 <- table(dat$Snowed, dat$Month)
+tabf2
+tabp2 <- proportions(tabf2, margin=2)
+tabp2
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, we need to use the `crosstab()` function from `pandas`. For proportions, we need to specify if we are dividing by row totals (`normalize='index'`), by column totals (`normalize='columns'`), or both (`normalize='True'`). 
+
+```{python}
+# Tables
+tabf2 = pd.crosstab(dat['Snowed'], dat['Month'])
+tabf2.index = ['False','True']
+tabf2
+tabp2 = pd.crosstab(dat['Snowed'], dat['Month'], normalize='columns')
+tabp2.index = ['False','True']
+tabp2
+```
+
+:::
+::::::::::::::
+
+**Bar and column charts** can be extended to show the composition of multiple groups or multiple categorical variables. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Multiple group column chart
+barplot(tabf2, beside=T, las=1, col=c("#A2AAAD", "#0F2439"), 
+        ylab="Frequency", xlab="Month", 
+        main="Frequency of snowed by month", 
+        legend.text = row.names(tabf2), args.legend = list(title="Snowed"))
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python}
+# Multiple group column chart
+_ = tabf2.T.plot(kind='bar', stacked=False, color=["#A2AAAD", "#0F2439"])
+_ = plt.xlabel("")
+_ = plt.ylabel("Frequency")
+_ = plt.title("Snowed or not")
+_ = plt.legend(title="Snowed")
+_ = plt.tight_layout()
+_ = plt.xticks(rotation=0)
+plt.show()
+```
+
+:::
+::::::::::::::
+
+**Stacked bar/column charts**, which place all the categories for a variable on each horizontal (or vertical) rectangle, are another option. They only work with a limited number of categories. 
+
+Stacked charts are especially useful if you are interested in comparing the proportion (and not frequency) of observations in each category across multiple variables. 
+
+Note: Stacked bar charts usually are easier to visualize than stacked column charts, because charts are usually wider than they are tall and it is easier to differentiate categories when they are longer and narrower (instead of shorter and fatter).
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Stacked multiple group bar chart of frequencies
+barplot(tabf2, horiz=T, las=1, col=c("#A2AAAD", "#0F2439"), 
+        xlab="Frequency", ylab="Month", 
+        main="Frequency of snowed by month", 
+        legend.text = row.names(tabf2), 
+        args.legend = list(x="center", title="Snowed", horiz=F))
+
+# Stacked multiple group bar chart of proportions
+barplot(tabp2, horiz=T, las=1, col=c("#A2AAAD", "#0F2439"), 
+        xlab="Proportion", ylab="Month", 
+        main="Proportion of snowed by month", 
+        legend.text = row.names(tabp2), 
+        args.legend = list(x="center", title="Snowed", horiz=F))
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python}
+# Stacked multiple group column chart of frequencies
+_ = tabf2.T.plot(kind='barh', stacked=True, color=["#A2AAAD", "#0F2439"])
+_ = plt.xlabel("Frequency")
+_ = plt.ylabel("")
+_ = plt.title("Frequency of snowed by month")
+_ = plt.legend(title="Snowed", loc='center')
+_ = plt.tight_layout()
+plt.show()
+
+# Stacked multiple group column chart of proportions
+_ = tabp2.T.plot(kind='barh', stacked=True, color=["#A2AAAD", "#0F2439"])
+_ = plt.xlabel("Proportion")
+_ = plt.ylabel("")
+_ = plt.title("Proportion of snowed by month")
+_ = plt.legend(title="Snowed", loc='center')
+_ = plt.tight_layout()
+plt.show()
+```
+
+:::
+::::::::::::::
+
+### One continuous variable and one categorical variable
+
+For one continuous variable and one categorical variables, **box plots** can also be extended to show the distribution of a continuous variable across groups of the categorical variable. Once again, vertical and horizontal options are available. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, with multiple groups, you must use the argument `formula=y~grp`. 
+
+```{r}
+# Vertical box plot
+boxplot(formula=CountBL~Month, data=dat, las=1, 
+        xlab="Month", ylab="Daily volume", main="Box plot of Boulevard Trail use by month")
+
+# Horizontal box plot
+boxplot(formula=CountBL~Month, data=dat, horizontal=T, las=1, 
+        ylab="Month", xlab="Daily volume", 
+        main="Box plot of Boulevard Trail use by month")
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, with multiple groups, you must use the `boxplot()` function from `seaborn`. 
+
+```{python}
+# Vertical box plot
+_ = sns.boxplot(x="Month", y="CountBL", data=dat, 
+        hue="Month", legend=False)
+_ = plt.xlabel("Month")
+_ = plt.ylabel("Daily volume")
+_ = plt.title("Box plot of Boulevard Trail use by month")
+plt.show()
+
+# Horizontal box plot
+_ = sns.boxplot(y="Month", x="CountBL", data=dat, orient='h',
+        hue="Month", legend=False)
+_ = plt.ylabel("Month")
+_ = plt.xlabel("Daily volume")
+_ = plt.title("Box plot of Boulevard Trail use by month")
+plt.show()
+```
+
+:::
+::::::::::::::
+
+### Two continuous variables
+
+Often, we are interested in visualizing the association or relationship between two variables. In these cases, we can use a **scatter diagram**  (or scatterplot), which depicts the actual observations on a two dimensional plane, with each point's specific (x,y) coordinates determined by the values of the two variables. In this way, a scatterplot gives us more rich information than a simple measure of association like Pearson's correlation parameter. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, they can be created using the `plot()` function. You can use different point characters by changing the `pch=` argument. Look at `?points` for details on what each `pch` number will show. 
+
+```{r}
+# Scatter plot
+plot(x=dat$Temp_Max, y=dat$CountBL, pch=19, las=1, col=rgb(0,0,0,0.1), 
+     xlab="Maximum daily temperature", ylab="Daily volume", 
+     main="Temperature vs. Boulevard Trail use")
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, they can be created using the `scatter()` function. 
+
+```{python}
+# Scatter plot
+_ = plt.scatter(dat["Temp_Max"], dat["CountBL"], 
+        color='black', alpha=0.1)
+_ = plt.xlabel("Maximum daily temperature")
+_ = plt.ylabel("Daily volume")
+_ = plt.title("Temperature vs. Boulevard Trail use")
+plt.show()
+```
+
+:::
+::::::::::::::
+
+### One continuous variable and one time variable
+
+A special plot is particularly useful when one of the variables is time. **Line charts** depict changes in one variable over any unit of time. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, they are created using a combination of the `plot()` function followed by the `line()` function. (We will discuss analyzing these types of *time series data* in a later tutorial.) Let's extract one month of data to plot. 
+
+```{r}
+# Extract one month in 2019
+temp1 <- dat[dat$Year=="2019" & dat$Month=="Mar",c("Date", "CountBL")]
+
+# Line chart
+plot(temp1$Date, temp1$CountBL, las=1, type="b", pch=19, 
+  xlab="Date", ylab="Daily volume", 
+  main="Line plot of Boulevard Trail use in March 2019")
+```
+
+Now, let's extract the same month one year earlier, and compare. Technically, we want dates that are $52 \times 7 = 364$ days earlier, to align weekends. To add another line to the same plot, use the `lines()` function. 
+
+```{r}
+# Extract same information, one year previous
+temp2 <- dat[dat$Date %in% (temp1$Date-52*7),c("Date", "CountBL")]
+names(temp2) <- c("Date", "CountBL_2018")
+temp2$Date <- temp2$Date + 52*7
+temp <- merge(temp1, temp2, by="Date", all.x=T, all.y=T)
+
+# Line chart
+plot(temp$Date, temp$CountBL, las=1, type="b", pch=19, 
+  xlab="Date", ylab="Daily volume", 
+  main="Line plot of Boulevard Trail use in March 2018 and 2019")
+lines(temp$Date, temp$CountBL_2018, type="b", pch=1, lty=3)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, use the `plot()` function. 
+
+```{python}
+# Extract one month in 2019
+temp1 = dat.loc[(dat["Year"]=="2019") & (dat["Month"]=="Mar")][["Date", "CountBL"]]
+
+# Line chart
+_ = plt.plot(temp1["Date"], temp1["CountBL"], marker='o', linestyle='-')
+_ = plt.xlabel("Date")
+_ = plt.ylabel("Daily volume")
+_ = plt.title("Line plot of Boulevard Trail use in March 2019")
+_ = plt.xticks(rotation=45)
+plt.show()
+```
+
+Now, let's extract the same month one year earlier, and compare. Technically, we want dates that are $52 \times 7 = 364$ days earlier, to align weekends. To add another line to the same plot, use the `plot()` and `scatter` functions. 
+
+```{python}
+# Extract same information, one year previous
+target_dates = temp1["Date"] - pd.to_timedelta(52 * 7, unit="d")
+temp2 = dat[dat["Date"].isin(target_dates)][["Date", "CountBL"]]
+del target_dates
+target_dates = temp2["Date"] + pd.to_timedelta(52 * 7, unit="d")
+temp2["Date"] = target_dates
+del target_dates
+temp2.columns = ["Date", "CountBL_2018"]
+temp = pd.merge(temp1, temp2, on="Date", how="outer")
+
+# Line chart
+_ = plt.plot(temp["Date"], temp["CountBL"], marker='o', linestyle='-', color="black", label="2019")
+_ = plt.plot(temp["Date"], temp["CountBL_2018"], linestyle=':', color="black", label="2018")
+_ = plt.scatter(temp['Date'], temp["CountBL_2018"], facecolors='none', edgecolors="black", marker='o')
+_ = plt.xlabel("Date")
+_ = plt.ylabel("Daily volume")
+_ = plt.title("Line plot of Boulevard Trail use in March 2018 and 2019")
+_ = plt.xticks(rotation=45)
+plt.show()
+```
+
+:::
+::::::::::::::
+
+## Other tips
+
+### General graphical tips
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+There are many other ways to customize and improve the appearance of these graphics in R. Look up graphical parameters by searching for `?par`. Here are a few links to websites that discuss these parameters: 
+
+* [Graphical Parameters in R](https://www.datacamp.com/doc/r/parameters) from DataCamp. 
+* [par() Graphical Parameters](http://www.gastonsanchez.com/r-graphical-parameters-cheatsheet.pdf) from Gaston Sanchez. 
+* [plot: Generic X-Y Plotting](https://www.rdocumentation.org/packages/graphics/versions/3.6.2/topics/plot) help from Rdocumentation. 
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+There are many resources to help you create pretty and professional graphics in Python. For instance: 
+
+* Different [plot types](https://matplotlib.org/stable/plot_types/index.html) and [examples](https://matplotlib.org/stable/gallery/index.html) from mathplotlib. 
+* [Cheatsheets](https://matplotlib.org/cheatsheets/) for plotting from mathplotlib. 
+
+:::
+::::::::::::::
+
+### The Grammar of Graphics
+
+A popular guide to producing figures is known as the *grammar of graphics*. This is based on the book *The Grammar of Graphics* by Leland Wilkinson ([link to publisher](https://link.springer.com/book/10.1007/0-387-28695-0), [link to Amazon](https://www.amazon.com/Grammar-Graphics-Statistics-Computing/dp/0387245448)) and [subsequent work](https://vita.had.co.nz/papers/layered-grammar.html) by Hadley Wickham. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, the grammar of graphics is implemented in the [**`ggplot2`** package](https://ggplot2.tidyverse.org/). There is [a handy cheatsheet](https://github.com/rstudio/cheatsheets/blob/master/data-visualization.pdf) on how to create and modify each of the types of charts in ggplot2. 
+
+```{r, warning=F}
+# Load packages
+library("ggplot2")
+
+# Pie chart
+df1 <- data.frame(Category=names(tabp1), Proportion=as.numeric(tabp1), Count=as.integer(tabf1))
+df1$Label <- paste0(df1$Category, " (", df1$Count, ", ", round(100*df1$Proportion), "%)")
+ggplot(data=df1, mapping=aes(x="", y=Proportion, fill=Category)) +
+  geom_bar(stat="identity", width=1) +
+  coord_polar(theta="y", start=0, direction=-1) + # clockwise
+  scale_fill_manual(values=c("#A2AAAD", "#0F2439")) +
+  geom_text(aes(label=Label), position=position_stack(vjust=0.5), size=4, color="white") +
+  labs(title="Snowed or not", fill="Category") + 
+  theme_void()
+rm(df1)
+
+# Column chart
+df1 <- data.frame(Category=names(tabf1), Frequency=as.integer(tabf1))
+ggplot(df1, aes(x=Category, y=Frequency, fill=Category)) + 
+  geom_bar(stat="identity") + 
+  scale_fill_manual(values=c("#A2AAAD", "#0F2439")) +
+  labs(title="Snowed or not") + 
+  theme_minimal()
+rm(df1)
+
+# Box plot
+ggplot(dat, aes(y=CountBL)) +
+  geom_boxplot(fill="#0F2439") +
+  labs(y="Daily volume",
+    title="Box plot of Boulevard Trail use") +
+  theme_minimal()
+
+# Histogram
+ggplot(dat, aes(x=CountBL)) +
+  geom_histogram(fill="#0F2439") +
+  labs(x="Daily volume", y="Frequency",
+    title="Box plot of Boulevard Trail use") +
+  theme_minimal()
+
+# Stacked bar chart
+df1 <- as.data.frame(tabp2)
+names(df1) <- c("Snowed", "Month", "Proportion") 
+ggplot(df1, aes(x=Proportion, y=Month, fill=Snowed)) + 
+  geom_bar(stat="identity", position="stack") + 
+  scale_fill_manual(values=c("#A2AAAD", "#0F2439")) + 
+  labs(x="Proportion", y="Month", 
+       title="Proportion of snowed by month", 
+       fill="Snowed") + 
+  theme_minimal()
+rm(df1)
+
+# Multi-group box plot
+ggplot(dat, aes(x=Month, y=CountBL, fill=Month)) +
+  geom_boxplot() +
+  labs(x="Month", y="Daily volume",
+    title="Box plot of Boulevard Trail use by month") +
+  guides(fill="none") + 
+  theme_minimal()
+
+# Scatter plot
+ggplot(dat, aes(x=Temp_Max, y=CountBL)) +
+  geom_point(size=1) +
+  labs(x="Maximum daily temperature", 
+       y="Daily volume",
+       title="Temperature vs. Boulevard Trail use") +
+  theme_minimal()
+
+# Line chart
+ggplot(temp1, aes(x=Date, y=CountBL)) +
+  geom_line() +
+  geom_point(size=2) +
+  labs(x="Date", y="Daily volume",
+    title = "Line plot of Boulevard Trail use in March 2019") +
+  theme_minimal()
+
+# Line chart
+df2 <- data.frame(Date = rep(temp$Date, 2), 
+  Traffic=c(temp$CountBL, temp$CountBL_2018),
+  Year=rep(c("Current", "Previous"), each=nrow(temp)))
+ggplot(df2, aes(x=Date, y=Traffic, color=Year, linetype=Year)) +
+  geom_line() +
+  geom_point(aes(shape=Year), size = 2) +
+  scale_color_manual(values=c("Current"="black", "Previous"="black")) +
+  scale_shape_manual(values=c("Current"=19, "Previous"=1)) +
+  scale_linetype_manual(values=c("Current"="solid", "Previous"="dotted")) +
+  labs(x="Date", y="Daily volume",
+    title = "Line plot of Boulevard Trail use in March 2018 and 2019") +
+  theme_minimal()
+rm(df2)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, the grammar of graphics is implemented in the [**`plotnine`** package](https://plotnine.org/), based on R's ggplot2. There is [a useful guide](https://plotnine.org/guide/install.html) on how to setup and use the functionality of `plotnine`. 
+
+```{python}
+# Load modules
+import plotnine as p9
+
+# Pie chart
+# not possible, plotnine does not have 
+# coord_polar from ggplot2
+
+# Column chart
+df1 = pd.DataFrame({"Category":tabf1.index, "Frequency":tabf1})
+plot = (p9.ggplot(df1, p9.aes(x="Category", y="Frequency", fill="Category")) + 
+  p9.geom_bar(stat="identity", show_legend=False) + 
+  p9.scale_fill_manual(values=["#A2AAAD", "#0F2439"]) +
+  p9.labs(title="Snowed or not", x="") + 
+  p9.theme_minimal())
+plot.show()
+del df1
+
+# Box plot
+plot = (p9.ggplot(dat, p9.aes(y="CountBL")) +
+  p9.geom_boxplot(fill="#0F2439") +
+  p9.labs(y="Daily volume",
+    title="Box plot of Boulevard Trail use") +
+  p9.theme_minimal())
+plot.show()
+
+# Histogram
+plot = (p9.ggplot(dat, p9.aes(x="CountBL")) +
+  p9.geom_histogram(fill="#0F2439") +
+  p9.labs(x="Daily volume", y="Frequency",
+    title="Box plot of Boulevard Trail use") +
+  p9.theme_minimal())
+plot.show()
+
+# Stacked bar chart
+df1a = pd.DataFrame({'Snowed':[True]*12, 
+  'Month':tabp2.T.index, 'Proportion':tabp2.T['True']})
+df1b = pd.DataFrame({'Snowed':[False]*12, 
+  'Month':tabp2.T.index, 'Proportion':tabp2.T['False']})
+df1 = pd.concat([df1a, df1b])
+plot = (p9.ggplot(df1, p9.aes(y="Proportion", x="Month", fill="Snowed")) + 
+  p9.geom_bar(stat="identity", position="stack") + 
+  p9.scale_fill_manual(values=["#A2AAAD", "#0F2439"]) + 
+  p9.labs(y="Proportion", x="Month", 
+    title="Proportion of snowed by month", 
+    fill="Snowed") + 
+  p9.theme_minimal() + 
+  p9.coord_flip())
+plot.show()
+del df1
+
+# Multi-group box plot
+plot = (p9.ggplot(dat, p9.aes(x="Month", y="CountBL", fill="Month")) +
+  p9.geom_boxplot(show_legend=False) +
+  p9.labs(x="Month", y="Daily volume",
+    title="Box plot of Boulevard Trail use") +
+  p9.theme_minimal())
+plot.show()
+
+# Scatter plot
+plot = (p9.ggplot(dat, p9.aes(x="Temp_Max", y="CountBL")) +
+  p9.geom_point(size=1) +
+  p9.labs(x="Maximum daily temperature", 
+       y="Daily volume",
+       title="Temperature vs. Boulevard Trail use") +
+  p9.theme_minimal())
+plot.show()
+
+# Line chart
+plot = (p9.ggplot(temp1, p9.aes(x="Date", y="CountBL")) +
+  p9.geom_line() +
+  p9.geom_point(size=2) +
+  p9.labs(x="Date", y="Daily volume",
+    title = "Line plot of Boulevard Trail use in March 2019") +
+  p9.theme_minimal())
+plot.show()
+
+# Line chart
+df2 = pd.DataFrame({
+    'Date': pd.concat([temp['Date'], temp['Date']], ignore_index=True),
+    'Traffic': pd.concat([temp['CountBL'], temp['CountBL_2018']], ignore_index=True),
+    'Year': ['Current'] * len(temp) + ['Previous'] * len(temp)
+})
+plot = (p9.ggplot(df2, p9.aes(x="Date", y="Traffic", color="Year", linetype="Year")) +
+  p9.geom_line() +
+  p9.geom_point(p9.aes(shape="Year"), size=2) +
+  p9.scale_color_manual(values={"Current":"black", "Previous":"black"}) +
+  p9.scale_shape_manual(values={"Current":"o", "Previous":"o"}) +
+  p9.scale_linetype_manual(values={"Current":"solid", "Previous":"dotted"}) +
+  p9.labs(x="Date", y="Daily volume",
+    title="Line plot of Boulevard Trail use in March 2018 and 2019") +
+  p9.theme_minimal())
+plot.show()
+del df2
+```
+
+:::
+::::::::::::::
+
+### Choosing colors
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+There are lots of resources about using colors in data visualizations in R. For instance: [an R color cheatsheet](https://www.nceas.ucsb.edu/sites/default/files/2020-04/colorPaletteCheatsheet.pdf) and [ColorBrewer](https://colorbrewer2.org/). 
+
+I especially like the package `RColorBrewer`, which lets you pick palettes from the [website](https://colorbrewer2.org/). 
+
+```{r}
+# Load package
+# install.packages("RColorBrewer")
+library("RColorBrewer")
+
+# Column chart
+brewer.pal(12, "Paired")
+barplot(tabp2["TRUE",], las=1, col=brewer.pal(12, "Paired"), 
+        ylab="Proportion", xlab="Month", 
+        main="Proportion of days with snow by month")
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+`seaborn` in Python already comes with many of the ColorBrewer palettes accessible. 
+
+```{python}
+# Column chart
+tmyptab = tabp2.T
+tmyptab["Month"] = tmyptab.index
+sns.color_palette("Paired", 12)
+_ = sns.barplot(data=tmyptab, x="Month", y="True", 
+        palette=sns.color_palette("Paired", 12))
+_ = plt.xlabel("Month")
+_ = plt.ylabel("Proportion")
+_ = plt.title("Proportion of days with snow by month")
+plt.show()
+```
+
+:::
+::::::::::::::
+
+### Formatting times
+
+When you receive a real-world dataset (including via CSV), any date-time variables will usually NOT be in a nice format. So, you will have to convert them from character to time types. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+To do this, we need to understand that R has special classes to represent time. The first, `POSIXct`, stores times as the number of seconds since the start of 1970. The second, `POSIXlt`, stores times as a list of separate elements (seconds, minutes, hours, days, years since 1900, etc.). The third, `Date`, stores dates as the number of days since the start of 1970. ([Why 1970](https://en.wikipedia.org/wiki/Unix_time)?) Usually, we will want to store times in `POSIXct` format and dates in `Date` format. It is relatively easy to convert between different time formats. Although the `POSIX` functions can interpret time formats, to be sure things work you need to specify how the years/months/days/hours/minutes are listed and separated. See `?strptime` for more information. 
+
+```{r}
+# See date-time formats
+t1 <- Sys.time()
+str(t1)
+t1
+t2 <- Sys.Date()
+str(t2)
+t2
+
+# Convert character to date-time formats
+t3 <- "2023-07-04 21:30:45"
+as.Date(t3, format="%Y-%m-%d %H:%M:%S", tz="America/Denver")
+as.POSIXct(t3, format="%Y-%m-%d %H:%M:%S", tz="America/Denver")
+
+# Can accommodate non-standard time formats
+t4 <- "Jul 4, 23 9:30pm 45s"
+as.POSIXct(t4, format="%b %e, %y %I:%M%p %Ss", tz="America/Denver")
+```
+
+Here are some other resources for dealing with time in R: 
+
+* [Dates and Times in R](https://www.stat.berkeley.edu/~s133/dates.html) from Phil Spector (University of California Berkeley). 
+* [Time Data Types](http://www.cyclismo.org/tutorial/R/time.html) from Kelly Black (University of Georgia). 
+* [Dates and times](https://r4ds.hadley.nz/datetimes.html) from Hadley Wickham et al. 
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+Python has a native `datetime` object and a `Timestamp` object from `pandas`. It is fairly easy to convert time stored as a string into a time format, using `to_datetime()`. 
+
+```{python}
+
+# See date-time formats
+t1 = pd.Timestamp.now()
+type(t1)
+t1
+t2 = pd.Timestamp.today().normalize()
+type(t2)
+t2
+
+# Convert character to date-time formats
+t3 = "2023-07-04 21:30:45"
+pd.to_datetime(t3, format="%Y-%m-%d %H:%M:%S").date()
+pd.to_datetime(t3, format="%Y-%m-%d %H:%M:%S").tz_localize("America/Denver")
+
+# Can accommodate non-standard time formats
+t4 = "Jul 4, 23 9:30pm 45s"
+pd.to_datetime(t4, format="%b %d, %y %I:%M%p %Ss").tz_localize("America/Denver")
+```
+
+Here are some other resources for dealing with dates and times in Python: 
+
+* [datetime -- Basic date and time types](https://docs.python.org/3/library/datetime.html) from Python. 
+* [Python Datetime](https://www.w3schools.com/python/python_datetime.asp) from W3Schools. 
+* [Working with Time Series](https://jakevdp.github.io/PythonDataScienceHandbook/03.11-working-with-time-series.html) from Jake VanderPlas. 
+
+:::
+::::::::::::::
+
+## Review
+
+* Can you merge or join two datasets together based on a common key/column? 
+* Can you process dates and extract information? 
+* Can you determine which charts are appropriate for visualizing the composition of a single categorical variable? 
+* Can you determine which charts are appropriate for visualizing the distribution of a single continuous variable? 
+* Can you determine which charts are appropriate for visually comparing two (or more) groups or variables? 
+* Can you determine which charts are appropriate for visualizing relationships between two variables? 
+* Can you create a basic version of each of the following charts: bar chart, stacked bar chart, box plot, histogram, scatter diagram? 
+
+**END**

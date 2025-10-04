@@ -1,0 +1,882 @@
+---
+title: "Linear regression assumptions"
+author: "Patrick A. Singleton"
+format: 
+    html:
+        embed-resources: true
+engine: knitr
+knitr:
+  opts_knit:
+    root.dir: ".."
+---
+
+### Objectives & outcomes
+
+The objectives of this tutorial are to: 
+
+* Understand the various assumptions of linear regression. 
+* Understand the implications of assumption violations. 
+* Practice testing each linear regression assumption (or diagnosing violations)
+* Learn about ways to address violations of assumptions. 
+
+At the end of this tutorial, you should be able to: 
+
+* Explain the meaning of each linear regression assumption. 
+* Describe the implications of violations to each assumption. 
+* Analyze via statistics or graphics the validity of each linear regression assumption. 
+* Address violations of assumptions through remedies, if available. 
+
+```{r}
+#| echo: false
+# some code to make the tutorial work
+library(reticulate)
+py_require("numpy")
+py_require("pandas")
+py_require("statsmodels")
+py_require("scipy")
+py_require("plotnine")
+```
+
+### Transportation dataset
+
+For this tutorial, we will use data from the *2019 Winter Transprotation Survey data* project. The data (*tbaqsurvey*) include responses from a 6-day travel diary survey of adult residents of Cache Valley, Utah, specifically several outcomes related to individual daily activity participation and travel behavior. You can access these data from the [Transportation datasets](https://github.com/singletonpa/usu-course-transport-data-research/blob/main/Data/Transportation_datasets.md) page on GitHub.
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Load data from GitHub
+tbaqsurvey <- read.csv(file=url("https://raw.githubusercontent.com/singletonpa/usu-course-transport-data-safety/main/Data/TB_AQ_survey/tbaqsurvey.csv", method="libcurl"))
+
+# Rename data frame
+mydf <- tbaqsurvey
+# str(tbaqsurvey)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python}
+# Load packages
+import pandas as pd
+import numpy as np
+
+# Changing setting until pandas 3.0
+pd.options.mode.copy_on_write = True
+
+# Load data from GitHub
+tbaqsurvey = pd.read_csv("https://raw.githubusercontent.com/singletonpa/usu-course-transport-data-research/main/Data/TB_AQ_survey/tbaqsurvey.csv")
+
+# Rename data frame
+mydf = tbaqsurvey
+# mydf.info()
+```
+
+:::
+::::::::::::::
+
+To start, let's create a linear regression model on this dataset. Instead of using factors, let's use dummy variables: 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Construct HHINC variables
+mydf$HHINC_Below <- ifelse(is.na(mydf$HHINC3), NA, ifelse(mydf$HHINC3 %in% c("Less than $35,000", "$35,000 to $74,999"), 1, 0))
+mydf$HHINC_Above <- ifelse(is.na(mydf$HHINC3), NA, ifelse(mydf$HHINC3=="$75,000 or more", 1, 0))
+mydf$HHINC_Unknown <- ifelse(is.na(mydf$HHINC3), NA, ifelse(mydf$HHINC3=="Unknown", 1, 0))
+
+# Linear regression model
+mymod1 <- lm(MODE_TOT ~ HHNPER + HHINC_Above + HHINC_Unknown, data=mydf)
+summary(mymod1)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python}
+# Construct HHINC variables
+mydf["HHINC_Below"] = np.where(mydf["HHINC3"].isna(), np.nan, 
+    np.where(mydf["HHINC3"].isin(["Less than $35,000","$35,000 to $74,999"]), 1, 0))
+mydf["HHINC_Above"] = np.where(mydf["HHINC3"].isna(), np.nan, 
+    np.where(mydf["HHINC3"]=="$75,000 or more", 1, 0))
+mydf["HHINC_Unknown"] = np.where(mydf["HHINC3"].isna(), np.nan, 
+    np.where(mydf["HHINC3"]=="Unknown", 1, 0))
+
+# Load packages
+import statsmodels.formula.api as smf
+
+# Linear regression model
+mymod1 = smf.ols("MODE_TOT ~ HHNPER + HHINC_Above + HHINC_Unknown", data=mydf).fit()
+mymod1.summary()
+```
+
+:::
+::::::::::::::
+
+Now, we'll examine the various linear regression assumptions, discuss how to detect violations of those assumptions, and propose remedies, if possible. 
+
+## Linear regression assumptions
+
+There are several key assumptions of the linear regression model regarding the data and the model form. These assumptions are important to understand, diagnose, and remedy, because (if violated) they could lead to all sorts of statistical issues: biased or inefficient parameter estimates, wrong conclusions, etc. After this, you should be able to: 
+
+* _Understand_: what these assumptions are and what they mean
+* _Identify_: how to detect violations of assumptions, both numerically and visually
+* _Remedy_: what to do if assumptions are violated
+
+what these assumptions are, how to detect them (numerically and visually), and remedies to violations of some of these assumptions. 
+
+Depending on the textbook or resource, authors may list and describe the assumptions of the linear regression model in various ways. Generally, there are 5 (or 7) statistical assumptions of linear regression: 
+
+1. _Linearity_: Linear-in-parameters functional form
+2. _Full rank_: Lack of perfect multicollinearity
+3. _Exogeneity_: Zero mean of residuals
+4. _Homoscedasticity_: Constant variance of residuals
+5. _Nonautocorrelation_: Independence of residuals
+6. _Normality_: Normally distributed residuals
+7. _Fixed variables_: Independent variables have no measurement error
+
+### Linearity: Linear-in-parameters functional form
+
+This assumption states that the dependent variable is a linear combination of the parameters and the independent variables (and the residuals). This is often described as a linear-in-parameters functional form. Mathematically, this linearity assumption can be represented by: 
+
+$$ Y_i = \beta_0 + X_{i1} \beta_1 + X_{i2} \beta_2 + ... + X_{iK} \beta_K + \epsilon_i $$
+
+$$ Y = X \beta + \epsilon $$
+
+This seems like a fairly strict assumption, right? Actually, there is considerable flexibility with this assumption, because any of the variables ($Y$ or $X$) can be **transformed**. The only requirement of this assumption is that the transformed variables are additive/linear. 
+
+Many transformations are possible: 
+
+* **Parabolic** ($X^m$): A common transformation is the quadratic $X^2$. Good practice keeps all lower-dimensional terms in the model as well. For instance: $Y = \beta_0 + \beta_1 X + \beta_2 X^2 + \beta_3 X^3$. 
+* **Hyperbolic** ($1/Y$ and $1/X$): When the "true" model is $Y = X/(\alpha + \beta X)$, this can be transformed into a linear model with $1/Y = \beta_0 + \beta_1 (1/X)$. 
+* **Expontential** ($ln(Y)$): When the "true" model is $Y = \alpha e^{\beta X}$, this can be transformed into a linear model with $ln(y) = \beta_0 + \beta_1 X$. 
+* **Inverse exponential** ($ln(y)$ and $1/X$): When the "true" model is $Y = \alpha e^{\beta/X}$, this can be transformed into a linear model with $ln(y) = \beta_0 + \beta_1 (1/X)$. 
+* **Power** ($ln(Y)$ and $ln(X)$): When the "true" model is $Y = \alpha X^\beta$, this can be transformed into a linear model with $ln(y) = \beta_0 + \beta_1 ln(X)$. 
+
+There are many good reasons for transforming either dependent or independent variables. Doing so can sometimes improve model goodness-of-fit and/or significance tests of parameters. It can also help to address violations of other assumptions about the residuals. In many cases, the theorized relationship between the DV and an IV may suggest a particular transformation. However, in my opinion, one can sometimes be overzealous in transforming variables. I recommend that there be a strong justification for transforming variables, and I think that the justification is often stronger when it is consistent with a theorized relationship rather than simply improving statistical performance. 
+
+#### Diagnostics
+
+A great way to check for linearity of the relationship is to look for it visually. You can construct scatter plots of the dependent variable versus each independent variable. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Check for linearity using plots
+for (i in 2:ncol(mymod1$model)) {
+  plot(mymod1$model[,i], mymod1$model[,1], pch=19, col=rgb(0,0,0,0.1), las=1, 
+       xlab=names(mymod1$model)[i], ylab=names(mymod1$model)[1], 
+       main="Scatterplot of observations")
+}; rm(i)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python, warning=F}
+# Initialize
+tcol = ["MODE_TOT","HHNPER","HHINC_Above","HHINC_Unknown"]
+temp = mydf[tcol]
+temp["Index"] = mydf.index
+temp["Fitted"] = mymod1.fittedvalues
+temp["Residual"] = mymod1.resid
+tcol.remove("MODE_TOT")
+
+# Load packages
+import plotnine as p9
+
+# Check for linearity using residual plots
+for i in tcol:
+     (p9.ggplot(temp, p9.aes(x=i, y="MODE_TOT")) + 
+     p9.geom_point(size=2, alpha=0.1) + 
+     p9.geom_hline(yintercept=0) + 
+     p9.labs(x=i, y="MODE_TOT", 
+          title="Scatterplot of observations") + 
+     p9.theme_minimal()
+     ).show()
+del i
+```
+
+:::
+::::::::::::::
+
+Better yet, you can construct scatter plots of residuals versus each independent variable. Look for systematic variations (non-linearities) in the residuals as you change levels of the IV or DV. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Check for linearity using residual plots
+for (i in 2:ncol(mymod1$model)) {
+  plot(mymod1$model[,i], mymod1$residuals, pch=19, col=rgb(0,0,0,0.1), las=1, 
+       xlab=names(mymod1$model)[i], ylab="residuals", 
+       main="Scatterplot of residuals")
+  if(class(mymod1$model[,i]) %in% c("integer", "numeric")) {
+    lines(x=c(min(mymod1$model[,i]),max(mymod1$model[,i])), y=c(0,0))
+  }
+}; rm(i)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python, warning=F}
+# Check for linearity using residual plots
+for i in tcol:
+     (p9.ggplot(temp, p9.aes(x=i, y="Residual")) + 
+     p9.geom_point(size=2, alpha=0.1) + 
+     p9.geom_hline(yintercept=0) + 
+     p9.labs(x=i, y="residuals", 
+          title="Scatterplot of residuals") + 
+     p9.theme_minimal()
+     ).show()
+del i
+```
+
+:::
+::::::::::::::
+
+What do you see in terms of trends between the residuals and each of your IVs? 
+
+#### Remedies
+
+The remedy for non-linearity in the relationship is ... transformation! Like we discussed, if there is a non-linear relationship between the DV and one or more of the IVs, at least one of the variables should be transformed as appropriate. Usually, the appropriate transformation depends upon the theoretical understanding of the relationship; other times, there are standard conventions for transforming certain variables (for instance, income is often log-transformed). 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Transform DV and IVs using natural log transformations
+mymod2 <- lm(log(MODE_TOT) ~ log(HHNPER) + HHINC_Above + HHINC_Unknown, data=mydf)
+summary(mymod2)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python}
+# Transform DV and IVs using natural log transformations
+mymod2 = smf.ols("np.log(MODE_TOT) ~ np.log(HHNPER) + HHINC_Above + HHINC_Unknown", data=mydf).fit()
+mymod2.summary()
+```
+
+:::
+::::::::::::::
+
+Let's see how that changed the residual vs. IV plots. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Check for linearity using residual plots
+for (i in 2:ncol(mymod2$model)) {
+  plot(mymod2$model[,i], mymod2$residuals, pch=19, col=rgb(0,0,0,0.1), las=1, 
+       xlab=names(mymod2$model)[i], ylab="residuals", 
+       main="Scatterplot of residuals")
+  if(class(mymod2$model[,i]) %in% c("integer", "numeric")) {
+    lines(x=c(min(mymod2$model[,i]),max(mymod2$model[,i])), y=c(0,0))
+  }
+}; rm(i)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python, warning=F}
+# Initialize
+temp["Residual2"] = mymod2.resid
+temp["log_HHNPER"] = np.log(temp["HHNPER"])
+tcol2 = ["log_HHNPER","HHINC_Above","HHINC_Unknown"]
+
+# Check for linearity using residual plots
+for i in tcol2:
+     (p9.ggplot(temp, p9.aes(x=i, y="Residual2")) + 
+     p9.geom_point(size=2, alpha=0.1) + 
+     p9.geom_hline(yintercept=0) + 
+     p9.labs(x=i, y="residuals", 
+          title="Scatterplot of residuals") + 
+     p9.theme_minimal()
+     ).show()
+del i
+```
+
+:::
+::::::::::::::
+
+Important note: If you are doing a log transformation, and your data have zeros (especially in the DV but also in the IVs), then you will get an error when you try to estimate the model because $ln(0)=-Inf$. One way around this issue is to add 1 to each value before doing the log-transformation: `log(MODE_TOT+1)`. Yes, this is technically changing your data, but it is usually not a problem if your variable tends to be much larger than 1. (There may be more serious issues with doing this if your variable tends to be around 1 or much smaller than 1. In those cases, you could add a smaller number, such as +0.01.) Another potential "benefit" is that when your original data are 0, the transformed values will also be zero because $ln(0+1)=ln(1)=0$. 
+
+### Full rank: Lack of perfect multicollinearity
+
+This assumption states that there is a lack of perfect multicollinearity; sometimes this is called full (column) rank. What this means is that any independent variable is not a linear combination of any other (set of) independent variable(s). Therefore you cannot add or subtract any variable (or a constant times a variable) to get another variable. Otherwise, there would be duplicate information in the model. 
+
+This assumption is why we cannot include all levels of a categorical variable in the model. Otherwise, we would have perfect multicollinearity! Consider the categorical variable regarding driver licensure: responses can be either yes (1) or no (0). If we include both $DL_Y$ and $DL_N$ variables in the model, the model will not estimate, because $DL_N = 1 - DL_Y$ and there is perfect multicollinearity. 
+
+#### Diagnostics
+
+If there is perfect multicollinearity, the model will (should) not estimate. This is a good test of this assumption! 
+
+In practice, there are cases when there is near-to-perfect multicollinearity. In these (too frequent) cases, the model will estimate, but there will usually be some weird (very large) standard errors $SE$. Look for these in the model output and consider what other variables may be highly correlated. 
+
+A straightforward way to diagnose high multicollinarity would be to calculate the correlation between all of the IVs in the model. 
+
+Another way to check for high mulitcollinearity is to calculate the **variance inflation factor (VIF)** for each IV in the model. Basically, the VIF is calculated using a regression of the other IVs on each IV in question. Large numbers indicate potentially highly correlated variables. Various guidelines exist for what constitutes a "high" VIF score. Some authors suggest a threshold of 4, while others say anything greater than 10 is high multicollinearity. 
+
+Note: This is only an issue when you have more than one independent variable in the model. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, we can use the `cor()` function: 
+
+```{r}
+# Check for highly-correlated IVs
+cor(mymod1$model[2:ncol(mymod1$model)])
+```
+
+In R, we can use the `vif()` function in the `car` package: 
+
+```{r, message=F, warning=F}
+# install.packages("car")
+library("car")
+```
+
+```{r}
+# Check for multicollinearity by calculating variance inflation factors for IVs
+vif(mymod1)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, we can use the `corr()` function: 
+
+```{python}
+# Process to get model variables
+mymod1ivs = pd.DataFrame(mymod1.model.exog)
+mymod1ivs.columns = ["Intercept"] + tcol
+
+# Check for highly-correlated IVs
+mymod1ivs[tcol].corr()
+```
+
+In Python, we can use the `variance_inflation_factor()` function from the `statsmodels` package: 
+
+```{python}
+# Load packages
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+```
+
+```{python}
+# Check for multicollinearity by calculating variance inflation factors for IVs
+myvif = [variance_inflation_factor(mymod1ivs.values, i) for i in range(mymod1ivs.shape[1])]
+myvif
+```
+
+:::
+::::::::::::::
+
+#### Remedies
+
+In the case of perfect multicollinearity, the remedy is to remove one of the perfectly-correlated IVs from the model. This is absolutely necessary for categorical variables, where one category must be removed. 
+
+In the case of high-but-not-perfect multicollinearity, consider removing highly-correlated variables from the model one at a time, re-estimating the model after each time. But, which variable should be removed? If you are using the VIF, you could select the variable with the highest VIF to be removed each round. 
+
+Usually, highly-correlated variables will be conceptually closely related. For example, when studying the association between the built environment and travel behavior, measures such as population density, household density, and employment density are usually strongly-to-moderately correlated. You could remove one of these on the basis that they are measuring similar concepts. Alternatively, you could create some sort of combined variable or index (using [factor analysis](https://en.wikipedia.org/wiki/Factor_analysis)) that accounts for all of these correlated measures in one variable. These methods are beyond the scope of this course. 
+
+### Exogeneity: Zero mean of residuals
+
+This assumption states the expected value of the residuals $\epsilon$, conditioned on the independent variables $X$, is zero. Mathematically, this zero conditional mean can be represented by: 
+
+$$ E[\epsilon_i | X_{j1}, X_{j2}, ..., X_{jK}] = E[\epsilon_i | X] = 0 $$
+
+This condition implies another (frequently stated) assumption: that the independent variables and the residuals are independent. Sometimes this is referred to as the exogeneity of the IVs. Mathematically, this exogeneity can be represented by: 
+
+$$ Cov[\epsilon_j, X_i] = 0 \space \forall \space i,j=1,...,n$$
+
+This is a very important assumption to meet. If the IVs are correlated with unobserved factors, then the parameter estimates are both biased and inconsistent. 
+
+#### Diagnostics
+
+Practically, this assumption is simple to check: we just have to look at the mean of the residuals! If we have estimated a linear regression model, we can calculate the mean of the model's residuals in the following way: 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Check for zero mean of residuals (= 0)
+mean(mymod1$residuals)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python}
+# Check for zero mean of residuals (= 0)
+temp["Residual"].mean()
+```
+
+:::
+::::::::::::::
+
+As long as you include a constant $\beta_0$ in your model, the residuals will always be equal to zero, and this assumption will always hold true. 
+
+You can also check the exogeneity of the independent variables: 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Check for independence of IVs and residuals (first column = 0)
+cor(cbind(mymod1$residuals, mymod1$model[2:ncol(mymod1$model)]))
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python}
+# Check for independence of IVs and residuals (first column = 0)
+temp[["Residual"] + tcol].corr()
+```
+
+:::
+::::::::::::::
+
+More fundamentally, this issue is difficult to diagnose. You may not know that the IVs are correlated with unobserved factors precisely because these factors are not measured. However, you may have a sense (from previous research or theory) about what independent variables should be associated with the dependent variable and thus should be included in the model. This may give you a sense of whether or not there are relevant omitted variables. 
+
+#### Remedies
+
+Statistical violations of this assumption are rarely encountered in practice. Make sure to always include a constant or intercept term $\beta_0$ in the model. 
+
+More conceptually, the best remedy for addressing correlations between IVs and residuals is to add all relevant IVs to the model. Unfortunately, this is difficult to do when the data are not available. In the future, consider designing the study or data collection so that all relevant data are collected. 
+
+### Homoscedasticity: Constant variance of residuals
+
+This assumption states that the variance of the residuals is constant across observations. This independence of the residual variance is also known as homoscedasticity. Practically, this means that the variance of the residuals should be constant across all levels of all the independent variables. Mathematically, homoscedasticity can be represented by: 
+
+$$ Var[\epsilon_i | X] = \sigma^2 \space \forall \space i=1,...,n$$
+
+The implications of a lack of homoscedasticity (heteroscedasticity) are that the standard errors $SE$ (and thus hypothesis tests and confidence intervals) will be incorrect; however, parameter estimates $\beta$ will be unbiased. 
+
+Heteroscedasticity often occurs in reality. For example, the mobility patterns of higher income households may be more varied than lower income households because of greater flexibility in travel options. 
+
+#### Diagnostics
+
+A decent way to check for homoscedasticity of residuals is to look for it visually. You can construct scatter plots of residuals versus each independent variable (and the predicted values). Look for changes in the dispersion (vertically) in the residuals as you change levels of the IV or DV. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Check for homoscedasticity using residual plots
+for (i in 2:ncol(mymod1$model)) {
+  plot(mymod1$model[,i], mymod1$residuals, pch=19, col=rgb(0,0,0,0.1), las=1, 
+       xlab=names(mymod1$model)[i], ylab="residuals", 
+       main="Scatterplot of residuals")
+  if(class(mymod1$model[,i]) %in% c("integer", "numeric")) {
+    lines(x=c(min(mymod1$model[,i]),max(mymod1$model[,i])), y=c(0,0))
+  }
+}; rm(i)
+plot(mymod1$fitted.values, mymod1$residuals, pch=19, col=rgb(0,0,0,0.1), las=1, 
+     xlab="fitted values", ylab="residuals", 
+     main="Scatterplot of residuals")
+lines(x=c(min(mymod1$fitted.values),max(mymod1$fitted.values)), y=c(0,0))
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python, warning=F}
+# Check for homoscedasticity using residual plots
+for i in tcol:
+     (p9.ggplot(temp, p9.aes(x=i, y="Residual")) + 
+     p9.geom_point(size=2, alpha=0.1) + 
+     p9.geom_hline(yintercept=0) + 
+     p9.labs(x=i, y="residuals", 
+          title="Scatterplot of residuals") + 
+     p9.theme_minimal()
+     ).show()
+del i
+(p9.ggplot(temp, p9.aes(x="Fitted", y="Residual")) + 
+     p9.geom_point(size=2, alpha=0.1) + 
+     p9.geom_hline(yintercept=0) + 
+     p9.labs(x="fitted values", y="residuals", 
+          title="Scatterplot of residuals") + 
+     p9.theme_minimal()
+).show()
+```
+
+:::
+::::::::::::::
+
+What do you see here? You are looking for something *different from* what you looked at for non-linearity. Here, you are looking for changes in the dispersion of the residuals (vertically) as the IV changes (horizontally). If they are clustered together in some ranges but quite a bit more varied in other ranges (again, clustered up-down, look at different places left-right), then you may have heteroscedasticity (non-constant variance of residuals). 
+
+There are also statistical tests that have been created to examine the null hypothesis of homoscedasticity of residual variances. You can see a long list of [tests for heteroscedasticity here](https://en.wikipedia.org/wiki/Heteroscedasticity). 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+One test that can be performed in R is the Breusch-Pagan test using the `bptest()` function from the `lmtest` package: 
+
+```{r, message=F, warning=F}
+# install.packages("lmtest")
+library("lmtest")
+```
+
+```{r}
+# Check for homoscedasticity of residual variances using the Breusch-Pagan test
+bptest(mymod1)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, we can do the Breusch-Pagan test using the `het_breuschPagan()` function from `statsmodels`: 
+
+```{python}
+# Load packages
+import statsmodels.api as sm
+
+# Breusch-Pagan test
+bp_test = sm.stats.het_breuschpagan(mymod1.resid, mymod1.model.exog)
+bp_results = {
+    "Lagrange multiplier statistic": bp_test[0],
+    "p-value": bp_test[1],
+    "f-value": bp_test[2],
+    "f p-value": bp_test[3]
+}
+print(bp_results)
+del bp_test, bp_results
+```
+
+:::
+::::::::::::::
+
+#### Remedies
+
+If heteroscedasticy is present, there are a couple of different options. First, if the heteroscedasticity is severe or confined to a single variable, consider transforming that variable in a way that removes the heteroscedasticity. (See the transformations listed above and in Appendix D.)
+
+Second, one can perform a variation on OLS estimation called weighted least squares (WLS). This method adjusts the variance-covariance matrix used to estimate the model to account for heteroscedasticity. This is a little tricky, because you have to first calculate a new covariance matrix, then use that matrix as the basis for the standard errors in the hypothesis tests of parameters. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, we can utilize the `vcovHC()` function from the `sandwich` package to calculate the heteroscedasticity-corrected covariance matrix, and then we can plug this into the `coeftest()` function from the `lmtest` package to do our hypothesis testing: 
+
+```{r, message=F, warning=F}
+# install.packages("sandwich")
+library("sandwich")
+```
+
+```{r}
+# Correct for heteroscedasticity using a corrected variance-covariance matrix
+coeftest(mymod1) # original model
+coeftest(mymod1, vcov=vcovHC(mymod1)) # with heterscedasticity-corrected variance-covariance matrix
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, we can use the `get_robustcov_results(cov_type="HC0")` code to calculate the heteroscedasticity-corrected covariance matrix, and then output the model `.summary()` using these robust standard errors. 
+
+```{python}
+# Correct for heteroscedasticity using a corrected variance-covariance matrix
+mymod1.summary() # original model
+mymod1.get_robustcov_results(cov_type="HC0").summary() # with heterscedasticity-corrected variance-covariance matrix
+```
+
+:::
+::::::::::::::
+
+Notice what changes and what doesn't change. Your coefficient estimates themselves are exactly the same. But the standard errors are different, because the model used a different variance-covariance matrix to calculate them. As a result, you also have different t-statistics and p-values. Another thing to note is that your overall model goodness-of-fit is not changed by this correction, because it only depends on the estimated coefficients, which didn't change. 
+
+### Nonautocorrelation: Independence of residuals
+
+This assumption states that the residuals are independent (from one another) across observations. This independence of residuals is also called nonautocorrelation. Mathematically, nonautocorrelation can be represented by: 
+
+$$ Cov[\epsilon_i, \epsilon_j | X] = 0 \space \forall \space i \ne j$$
+
+Similarly, the implications of autocorrelation are that the standard errors $SE$ (and thus hypothesis tests and confidence intervals) will be incorrect; however, parameter estimates $\beta$ will be unbiased. 
+
+Autocorrelation (or serial correlation) occurs when there is correlation in the unobserved factors among observations. This can happen for a number of reasons. The most common is when there are multiple observations from the same subject over time, such as with time series data. For example, we may have recorded multiple trips from the same individual in our sample; we would expect that there may be some unobserved characteristics of that individual which influence her/his behavior, generating correlated residuals. Another common instance of autocorrelation is when there is grouping or clustering in the data. For example, we may have recorded multiple trips from people in the same household or neighborhood; we might expect that they share some similarities that we may not be measuring. 
+
+Autocorrelation results in larger than true random variances, meaning that the estimates will be less efficient (harder to reject a null hypothesis); however, like for violations of homoscedasticity, parameter estimates $\beta$ will be unbiased. 
+
+Together, the assumptions about homoscedasticity and nonautocorrelation are sometimes referred to as spherical disturbances. 
+
+#### Diagnostics
+
+If we have a time-series dataset, we can plot the residuals versus our time variable. If there appears to be a trend over time, then we can diagnose autocorrelation as being present. (In the examples below, we don't have time series data, so this is more for demonstration purposes.)
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Check for autocorrelation visually (over time)
+plot(1:nrow(mymod1$model), mymod1$residuals, type="b", 
+     pch=19, col=rgb(0,0,0,0.1), las=1, 
+     xlab="Observations", ylab="residuals",
+     main="Scatterplot of residuals")
+lines(x=c(0,nrow(mymod1$model)), y=c(0,0))
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python, warning=F}
+# Check for autocorrelation visually (over time)
+(p9.ggplot(temp, p9.aes(x="Index", y="Residual")) +
+    p9.geom_point(size=2, alpha=0.1) + 
+    p9.geom_line(color="black", size=0.25) + 
+    p9.geom_hline(yintercept=0) + 
+    p9.labs(x="Observations", y="residuals", 
+          title="Scatterplot of residuals") + 
+     p9.theme_minimal()
+).show()
+```
+
+:::
+::::::::::::::
+
+If we have a potentially-clustered dataset, we can create a boxplot of the residuals for each level of the clustering variable. 
+
+There are also statistical tests that have been created to examine the null hypothesis of nonautocorrelation of residuals. You can see a long list of [tests for autocorrelation here](https://en.wikipedia.org/wiki/Autocorrelation#Regression_analysis). 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+A test that can be performed in R is the Breusch-Godfrey test using the `bgtest()` function from the `lmtest` package: 
+
+```{r, message=F, warning=F}
+# install.packages("lmtest")
+library("lmtest")
+```
+
+```{r}
+# Check for autocorrelation of residuals using the Breusch-Godfrey test
+bgtest(mymod1)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, we can perform the Breusch-Godfrey test using the `acorr_breusch_godfrey()` function from `statsmodels`: 
+
+```{python}
+# Check for autocorrelation of residuals using the Breusch-Godfrey test
+sm.stats.diagnostic.acorr_breusch_godfrey(mymod1, nlags=1)
+```
+
+:::
+::::::::::::::
+
+#### Remedies
+
+If autocorrelation is present, several remedies are available. 
+
+For data that have correlated residuals due to clustering effects, you could add the clustering/grouping categorical variable to the model. An alternative (and often more appropriate) option is to conduct what is known as multilevel modeling or hierarchical linear modeling. Basically, you estimate both a linear regression model on the data as well as a linear regression model on the parameters of your model. This is more complicated, and we do not have time to discuss it in this course. For more information, see this website on [multilevel modeling](https://en.wikipedia.org/wiki/Multilevel_model). 
+
+Another option is to do something like we did for heteroscedasticity: adjust the variance-covariance matrix to account for autocorrelation. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, we can utilize the `vcovHAC()` function from the `sandwich` package to calculate the heteroscedasticity-and-autocorrelation-corrected covariance matrix, and then we can plug this into the `coeftest()` function from the `lmtest` package to do our hypothesis testing:
+
+```{r}
+# Correct for autocorrelation using a corrected variance-covariance matrix
+coeftest(mymod1) # original model
+coeftest(mymod1, vcov=vcovHAC(mymod1)) # with heterscedasticity-and-autocorrelation-corrected variance-covariance matrix
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, we can use the `get_robustcov_results(cov_type="HAC")` code to calculate the heteroscedasticity-and-autocorrelation-corrected covariance matrix, and then output the model `.summary()` using these robust standard errors. 
+
+```{python}
+# Correct for autocorrelation using a corrected variance-covariance matrix
+mymod1.summary()
+mymod1.get_robustcov_results(cov_type="HAC", maxlags=7).summary() # with heterscedasticity-and-autocorrelation-corrected variance-covariance matrix
+```
+
+:::
+::::::::::::::
+
+### Normality: Normally distributed residuals
+
+This assumption states that the disturbances are independently and identically distributed (i.i.d.) normal. Mathematically, this normal distribution assumption can be represented by: 
+
+$$ \epsilon | X \sim N[0, \sigma^2 I] $$
+
+As we've seen from the previous assumptions, the mean of the disturbances is zero ($\epsilon = 0$) and the variance of the disturbances is constant ($Var(\epsilon) = \sigma^2$). Technically, this assumption of normality may not be absolutely necessary for linear regression. However, it does help for inferences about the parameters of the model; otherwise, hypothesis testing may be adversely affected. 
+
+#### Diagnostics
+
+One way to investigate the normality of residuals is to plot their empirical distribution. We can plot a histogram and look for how "normal" it looks; you could also superimpose a normal curve on top. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Check for normality of residuals using a histogram
+hist(mymod1$residuals, freq=F, xlab="residuals", main="Histogram of residuals")
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python, warning=F}
+# Check for normality of residuals using a histogram
+(p9.ggplot(temp, p9.aes(x="Residual")) +
+  p9.geom_histogram(p9.aes(y="..density.."), fill="grey") +
+  p9.labs(x="residuals", title="Histogram of residuals") +
+  p9.theme_minimal()
+  ).show()
+```
+
+:::
+::::::::::::::
+
+This visual method is a little difficult and involves some judgement. A easier visual method is to use what is known as a quantile-quantile or normal q-q or normal probability plot. Basically, a [q-q plot](https://en.wikipedia.org/wiki/Q%E2%80%93Q_plot) compares the observed quantiles of the data to what a standard normal distribution would look like. If the points fall along a straight diagonal line, the residuals are approximately normally distributed. If they deviate substantially, the residuals are probably not normally distributed. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Check for normality of residuals using a q-q plot
+qqnorm(mymod1$residuals, pch=20)
+qqline(mymod1$residuals)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python}
+# Check for normality of residuals using a q-q plot
+sm.qqplot(temp["Residual"], line='s')
+```
+
+:::
+::::::::::::::
+
+A different option is to do a statistically hypothesis test of normality. The Kolmogorov-Smirnov one-sample test compares the empirical distribution of data to a reference probability distribution; in our case, we are comparing the distribution of our residuals to the cumulative normal distribution. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+Beforehand, we have to standardize the residuals using the `scale()` function: subtract the mean ("centering") and divide by the standard deviation ("scaling"). Now, we can utilize the `ks.test()` function in base R to perform a hypothesis test of the normality of residuals: 
+
+```{r}
+# Check for normality of residuals using Kolmogorov-Smirnov test
+ks.test(scale(mymod1$residuals, center=T, scale=T), "pnorm") # pnorm is the standard normal distribution function
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+Beforehand, we have to calculate the studentized residuals using `outlier_test()['student_resid']`. Then, we can use the `ks_1samp()` function from `scipy` to perform a hypothesis test of the normality of residuals (versus `norm.cdf`): 
+
+```{python}
+# Load packages
+from scipy import stats
+
+# Check for normality of residuals using Kolmogorov-Smirnov test
+ks_test = stats.ks_1samp(mymod1.outlier_test()['student_resid'], stats.norm.cdf)
+ks_results = {
+    "KS Statistic": ks_test[0],
+    "p-value": ks_test[1]
+}
+print(ks_results)
+del ks_test, ks_results
+```
+
+:::
+::::::::::::::
+
+#### Remedies
+
+There are no quick and easy solutions to the non-normality of residuals. Sometimes, we can transform some of the variables (especially the DV) to help and make the residuals more normally distributed. (See the discussion of variable transformations above.)
+
+If residuals show a strong and stark pattern that is not normal (when viewing the q-q plot), you might consider using a different kind of regression, one that is non-linear. We will discuss some of these options later in the course. 
+
+### Fixed variables: Independent variables have no measurement error
+
+This assumption states that the independent variables are fixed, not random, variables. In other words, the IVs are measured without error; there is perfect reliability and no measurement error. Some authors don't include this in their list of assumptions, because it is not strictly necessary. 
+
+A reason why some authors assume this is that is allows our model results to be interpretable. Say we had a variable regarding people's opinion about the benefits of electric vehicles, where they rated their agreement with a question on a five-point scale, from "Strongly Agree" to "Strongly Disagree". Presumably, there are differences of opinion that do not fall perfectly into the five points; we could think of this variable as a discrete approximation of an underlying continuous attitude. Thus, the variable in our model contains measurement error: the difference between someone's true opinion and the closest category they could select. 
+
+#### Diagnostics
+
+There is no good way to test whether or not the independent variables contain measurement error. You must rely on your own understanding of the phenomena, the data collection process, and specifically how each of the variables were measured. 
+
+#### Remedies
+
+The best way to fix the issue of IVs with measurement error is to avoid it in the first place: measure the variables you want to use in the model with as much accuracy and precision as possible. This is often not possible, either because the data have already been collected or because the concept you are measuring is difficult (or impossible) to measure without error. (Consider the psychological example above.) In these cases, we can use what is known as structural equation modeling (SEM). This complicated method basically utilizes multiple imperfect measures of a particular underlying (latent) concept in a structured way to (partially) account for measurement error. SEM is a complex topic, you can read more about [SEM here](https://en.wikipedia.org/wiki/Structural_equation_modeling). 
+
+## Review
+
+* Can you explain the meaning of each linear regression assumption? 
+* Can you describe the implications of violations to each assumption? 
+* Can you analyze via statistics or graphics the validity of each linear regression assumption? 
+* Can you address violations of assumptions through remedies, if available? 
+* Can you detect non-stationarity and autocorrelation using plots and statistics? 
+* Do you know what methods are available for dealing with non-stationarity and autocorrelation? 
+
+**END**

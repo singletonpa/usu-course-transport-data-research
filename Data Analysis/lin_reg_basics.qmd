@@ -1,0 +1,709 @@
+---
+title: "Linear regression basics"
+author: "Patrick A. Singleton"
+format: 
+    html:
+        embed-resources: true
+engine: knitr
+knitr:
+  opts_knit:
+    root.dir: ".."
+---
+
+### Objectives & outcomes
+
+The objectives of this tutorial are to: 
+
+* Understand the fundamentals of linear regression. 
+* Understand hypothesis testing of model parameters. 
+* Understand goodness-of-fit statistics for a model. 
+* Practice estimating models with various specifications: 
+    * One continuous independent variable
+    * One categorical independent variable
+    * Multiple independent variables
+* Understand model comparison tests for nested models. 
+
+At the end of this tutorial, you should be able to: 
+
+* Estimate linear regression models with various specifications: 
+    * One continuous independent variable
+    * One categorical independent variable
+    * Multiple independent variables
+* Interpret the results of hypothesis testing of model parameters. 
+* Write technically about the results of an estimated linear regression model. 
+* Compare results from two nested models. 
+
+```{r}
+#| echo: false
+# some code to make the tutorial work
+library(reticulate)
+py_require("numpy")
+py_require("pandas")
+py_require("statsmodels")
+```
+
+### Transportation dataset
+
+For this tutorial, we will use data from the *2019 Winter Transprotation Survey data* project. The data (*tbaqsurvey*) include responses from a 6-day travel diary survey of adult residents of Cache Valley, Utah, specifically several outcomes related to individual daily activity participation and travel behavior. You can access these data from the [Transportation datasets](https://github.com/singletonpa/usu-course-transport-data-research/blob/main/Data/Transportation_datasets.md) page on GitHub.
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Load data from GitHub
+tbaqsurvey <- read.csv(file=url("https://raw.github.com/singletonpa/usu-course-transport-data-research/main/Data/TB_AQ_survey/tbaqsurvey.csv", method="libcurl"))
+
+# Rename data frame
+mydf <- tbaqsurvey
+# str(tbaqsurvey)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python}
+# Load packages
+import pandas as pd
+import numpy as np
+
+# Load data from GitHub
+tbaqsurvey = pd.read_csv("https://raw.github.com/singletonpa/usu-course-transport-data-research/main/Data/TB_AQ_survey/tbaqsurvey.csv")
+
+# Rename data frame
+mydf = tbaqsurvey
+# mydf.info()
+```
+
+:::
+::::::::::::::
+
+## Regression fundamentals
+
+Recall, we used bivariate measures of association (e.g., correlation) to examine the statistical relationship between two variables. But what if we want to look at the relationships between one variable and several other variables simultaneously? Or, what if we want to look at the association between one variable and another, while controlling for any confounding associations with the first variable and other control variables? In these cases, we will likely want to use regression. 
+
+Regression is a way to model the relationship between one particular variable of interest ($Y$) and many other variables ($X$). We give each of these variables special names: 
+
+* The **dependent variable** (or outcome variable) $Y$
+* The **independent variables** (or explanatory or predictor variables) $X=[X_1, X_2, ...]$
+
+In regression in general, we say that the dependent variable $Y$ is equal to some function of the independent variables $X$s and some parameters (or regression coefficients) $\beta$, or $Y=f(X,\beta)$. Our goal with regression is to estimate (figure out) the parameters $\beta$ that best fit the observed data $X$ and $Y$, given our (hypothesized or asserted) function/model $f(*)$. In almost every instance, our estimated model $f(X,\beta)$ will not be a perfect fit to the data, so there will be some errors in prediction (a.k.a disturbances), $\epsilon$. 
+
+### Linear regression
+
+In linear regression, our model asserts that there is an linear relationship between $Y$ and each of the $X$s, according to the following equations: 
+
+$$ Y_i = \beta_0 + \beta_1 X_{i1} + \beta_2 X_{i2} + ... + \beta_J X_{iK} + \epsilon_i $$
+$$ Y = X \beta + \epsilon \Rightarrow \hat Y = X \beta $$
+
+where, for each observation $i$: 
+
+* Dependent variable $Y$ is a vector of $Y_i$ 
+* Predicted values $\hat Y$ is a vector of $\hat Y_i$
+* $X$ is a matrix of $K$ independent variables $X_1, ..., X_K$, each a vector of $X_{ik}$
+* $\epsilon$ is a vector of residuals (or disturbances or errors) $\epsilon_i = Y_i - \hat Y_i$
+
+### Inference in linear regression analysis
+
+The motivations for conducting a regression analysis are usually to examine the **relationship** (technically, the **association**) between dependent variable $Y$ and at least one independent variable $X$. But, we usually don't just want to know what the data tell us about the magnitude and direction ($\beta$) of that association. Instead, we are interested in considering hypothesis about that association. Thus, we can apply inferential statistics and hypothesis testing! 
+
+In linear regression, we are interested in the following **hypothesis test** (usually, $\beta_k^\prime=0$): 
+
+$$ H_0: \beta_k = \beta_k^\prime $$
+$$ H_a: \beta_k \ne \beta_k^\prime $$
+
+Again, we can use a test statistic to perform our hypothesis testing: 
+
+$$ t^* = \frac {\beta_k - \beta_k^\prime} {SE(\beta_k)} $$
+
+which follows the [Student's $t$ distribution](https://en.wikipedia.org/wiki/Student%27s_t-distribution) with $df = n - (1 + K)$. The value $SE(\beta_j)$ is the **standard error** of the estimated parameter, defined by: 
+
+$$ SE(\beta_k) = \sqrt { \frac {\sum_{i=1}^n {(Y_i - \hat Y_i)^2}} {n-(1+K)} / \sum_{i=1}^n {(X_{ik}-\bar X_k)^2} } = \sqrt { \frac {\sum_{i=1}^n {(Y_i - \hat Y_i)^2}} {\sum_{i=1}^n {(X_{ik}-\bar X_k)^2}} / (n-(1+K)) } $$
+
+Again, we can alternatively calculate a **confidence interval**: 
+
+$$ \beta_k \pm t_{\alpha/2} SE(\beta_k) $$
+
+where $t_{a/2}$ is the value of the Student's $t$ distribution with $df = n - (1 + K)$. 
+
+Note: The **degrees of freedom** in the above equations are $df = n - (1 + K)$. Basically, for any model, degrees of freedom are the number of observations ($n$) minus the number of estimated parameters. Here, we have $(1+K)$ parameters, because we have a constant/intercept $\beta_0$ plus all of the parameters for the independent variables $\beta_1, \beta_2, ..., \beta_K$. 
+
+Many times, we are interested in figuring out which independent variables in a model are associated with the dependent variable $Y$. We perform multiple t-tests using the null hypotheses $H_0: \beta_k = 0$. If we fail to reject a null hypothesis, we tend to state that the variable $X$ does not have a statistically significant association with variable $Y$, or that the association is "not statistically significant". If we reject a null hypothesis, we tend to say that the variable $X$ has a statistically significant (positive or negative) association with the variable $Y$ (and report $\beta$, $SE$, and $p$). 
+
+### Goodness of fit measures for linear regression
+
+The inferential approaches discussed above tell us about the association between dependent variable $Y$ and one independent variable $X$. What if we want some measure of the overall fit of the model; or the collective association between $Y$ and all of the independent variables? We can use overall model **goodness-of-fit** statistics. 
+
+First, we need to understand (and calculate) the following measures: 
+
+* Error sum of squares: $SSE = \sum_{i=1}^n (Y_i - \hat Y_i)^2$
+* Regression sum of squares: $SSR = \sum_{i=1}^n (\hat Y_i - \bar Y)^2$ 
+* Total sum of squares $SST = SSE + SSR = \sum_{i=1}^n (Y_i - \bar Y)^2$
+
+The coefficient of determination ($R^2$) can be calculated based on these values: 
+
+$$ R^2 = \frac {SST-SSE} {SST} = \frac {SSR} {SST} = 1 - \frac {SSE} {SST} $$
+
+We can interpret $R^2$ as the proportion of total variance ($SST$) explained or accounted for by the model (both independent variables $X$ and parameters $\beta$) ($SSR$). Thus, an $R^2$ close to 1 means that most of the variance is explained by the model; an $R^2$ close to 0 means that most of the variance is unexplained by the model. There is no widely-accepted values for $R^2$ to be considered a "good" fitting model; it depends on the field and the phenomena being studied. 
+
+Sometimes you may see an adjusted value, $R^2_{adjusted}$. This value accounts for the number of model parameters, because adding more variables to the model will improve model fit even if they are not "statistically significant". It is calculated by: 
+
+$$ R^2_{adjusted} = 1 - \frac {SSE/(n-(1+K))} {SST/(n-1)} = 1 - (\frac {n-1} {n-(1+K)}) \frac {SSE} {SST} $$
+
+### Estimation methods for linear regression
+
+There are two primary ways in which linear regression model parameters can be estimated. The most common approach is **ordinary least squares (OLS)** estimation. This can be solved with basic equations (for the simple case of one independent variable) or matrix algebra (for more complex cases involving multiple independent variables). The matrix algebra is as follows: $\hat \beta = (X^T X)^{-1} X^TY$. 
+
+The other approach is called **maximum likelihood estimation (MLE)**. This method involves constructing a likelihood equation (describing the probability of the data conditional on the model and parameters) and optimizing it. Generally, a likelihood function is $L(\beta | X) = \prod_{i=1}^n f(x_i,\beta)$. 
+
+For linear regression, there is no difference between the results of a model estimated using OLS or MLE methods. However, for more complex types of regression (which we will discuss later), MLE is more appropriate. For now, you don't have to worry about estimation methods because R functions take care of that for you! 
+
+## Linear regression examples
+
+Let's walk through some examples of how to perform linear regression, as well as how to understand and interpret the various outputs of an estimated model. Basically, to estimate a model, we need two things: a *formula* and a *dataset*. 
+
+We can use the `lm()` function (linear model) to estimate our models. If we inspect this function (`?lm`), we can see that we need to specify a formula and a dataset. 
+
+Writing a formula is an important skill that will be very useful for future modeling and data analysis efforts. Basically, you name the dependent variable on the left, put a `~` in the middle, and list the independent variables on the right, separated by `+` symbols. (No text for the dataframe is needed, because you specify that later.) 
+
+* You do not need to specify an intercept (or $\beta_0$); it will be assumed to be there always. (To remove the intercept, you use the formula `DV ~ IVs + 0` or `DV ~ IVs - 1`.)
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, we can use the `lm()` function (linear model) to estimate a linear regression model. 
+
+* You can put the formula in quotes (or not). 
+
+
+```{r, eval=F}
+# Linear regression model
+# Note: code does not run, example only
+# - replace DV and IVs with your variable names
+mymod <- lm(DV ~ IV1 + IV2 + IV2, data=mydf)
+mymod <- lm("DV ~ IV1 + IV2 + IV2", data=mydf) # equivalent
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, we can use the `ols()` function from `statsmodels` (ordinary least squares) to estimate a linear regression model. 
+
+* You must put the formula in quotes. 
+
+```{python}
+# Load packages
+import statsmodels.formula.api as smf
+```
+
+```{python, eval=F}
+# Linear regression model
+# Note: code does not run, example only
+# - replace DV and IVs with your variable names
+mymod = smf.ols("DV ~ IV1 + IV2 + IV2", data=mydf)
+mymod = smf.ols(DV ~ IV1 + IV2 + IV2, data=mydf) # doesn't work
+```
+
+:::
+::::::::::::::
+
+### ...with a single (continuous) predictor
+
+We will start simple, with one DV and one IV: $Y =\beta_0 + \beta_1 X_1 + \epsilon$. For instance, we may be interested to examine the relationship between _**MODE_TOT**_ (the total number of trips taken, by any mode) and _**HHNPER**_ (the number of adults in the household). 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, we can estimate a linear regression model using the `lm()` function, and view the detailed results using the `summary()` function: 
+
+```{r}
+# Linear regression model with one continuous IV
+mymod1 <- lm(MODE_TOT ~ HHNPER, data=mydf)
+summary(mymod1)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, we can estimate a linear regression model using the `ols()` function from `statsmodels`, followed by the `.fit()` function. We can view the detailed results using the `.summary()` function: 
+
+```{python}
+# Linear regression model with one continuous IV
+mymod1 = smf.ols("MODE_TOT ~ HHNPER", data=mydf).fit()
+mymod1.summary()
+```
+
+:::
+::::::::::::::
+
+Inspect this output. First, look at the table of coefficients. There is a row for our intercept $\beta_0$ and a row for the parameter $\beta_1$ associated with our single IV `HHNPER`. Then, there are five columns: 
+
+* `Estimate` or `coef`: This is the model's estimate of the parameter $\beta_k$. 
+* `Std. Error` or `std err`: This is the standard error of the estimated parameter ${SE}(\beta_k)$. 
+* `t value` or `t`: This is the value of the t-statistic $t^* = \beta_k / {SE}(\beta_k)$ for the null hypothesis $H_0: \beta_k = 0$.
+* `Pr(>|t|)` or `P>|t|`: This is the p-value for the hypothesis test; the probability that the data are consistent with $H_0$. 
+* In R, the fifth column indicates the significance level result of the hypothesis test. By default, it gives `*` if $p<0.10$, `**` if $p<0.05$, and `***` if $p<0.01$. 
+* In Python, the fifth and sixth columns indicates the 95th-percentile confidence interval for the coefficient value. 
+
+What do these estimates and hypothesis test results tell us about the association we modeled? We don't usually interpret the intercept because it doesn't tell us much about the relationships we are interested in; you can interpret it as the average value of $Y$ when all the $X$s are zero. Interpreting the slope ($\beta_1$), we see that we can reject the null hypothesis of "no association" with a 95% confidence level. Thus, we can say: "For Cache Valley adults, the number of adults per household was (negatively, and statistically significantly) associated with an individuals' daily number of trips taken". Since the association is statistically significant, we can also interpret the parameter estimate in the following way: **a 1-unit increase in $X$ was associated with a $\beta_k$ unit change in $Y$**. For example: "Model results suggest that a 1-person increase in the number of adults in a household was associated with a `r round(summary(mymod1)$coefficients[2],2)` trip change in the number of daily trips per person." You could also say the same thing about multiples of changes in the IV: "Model results suggest that a 2-person increase in the number of adults in a household was associated with a `r round(2*summary(mymod1)$coefficients[2],2)` trip change in the number of daily trips per person." 
+
+Next, look at the final few lines of output. We see the $R^2$ value of `r round(summary(mymod1)$r.squared, 4)` and the adjusted value of `r round(summary(mymod1)$adj.r.squared, 4)`. Notice something interesting in the following: 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+summary(mymod1)$r.squared # model r-squared value
+cor(mydf$MODE_TOT, mydf$HHNPER, use="pairwise.complete.obs")^2 # squared correlation
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python}
+mymod1.rsquared # model r-squared value
+mydf[["MODE_TOT", "HHNPER"]].corr().iloc[1,0] ** 2 # squared correlation
+```
+
+:::
+::::::::::::::
+
+For a linear regression model with one continuous IV, the $R^2$ value is simply the squared correlation between the DV and the IV; we are basically measuring the same thing! Although this does not hold for models with one categorical IV or multiple IVs, the concept is the same: the goodness-of-fit measure is representing the similarity (correlation) between the DV and the set (linear combination) of IVs (and $\beta$s).
+
+### ...with a single (categorical) predictor
+
+We don't have to restrict ourselves to continuous IVs; we can include **categorical variables** as well. However, categorical variables must be stored as either a set of (T/F, 0/1) variables or as factors. If they are characters, the model may not estimate. If they are numeric, the model will treat them as continuous. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+Let's create a categorical variable by processing the `HHNPER` variable. In R, we will use the `cut()` function, specifying the bins (`breaks`) and their `labels` into which to put each observation. 
+
+```{r}
+# Create categorical HHNPER variable
+table(mydf$HHNPER)
+mydf$HHNPER_ <- cut(mydf$HHNPER, breaks=c(0,1,Inf), labels=c("1", "2+"))
+mydf$HHNPER_ <- relevel(mydf$HHNPER_, ref="2+")
+str(mydf$HHNPER_)
+table(mydf$HHNPER_)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+Let's create a categorical variable by processing the `HHNPER` variable. In Python, we will use the `cut()` function from `pandas`, specifying the bins (`bins`) and their `labels` into which to put each observation. 
+
+```{python}
+# Create categorical HHNPER variable
+mydf["HHNPER"].value_counts().sort_index()
+mydf["HHNPER_"] = pd.cut(mydf["HHNPER"], bins=[0,1,np.inf], labels=["1", "2+"], right=True)
+mydf["HHNPER_"] = pd.Categorical(mydf["HHNPER_"], categories=["2+","1"])
+mydf["HHNPER_"].info()
+mydf["HHNPER_"].value_counts()
+```
+
+:::
+::::::::::::::
+
+Of course, we didn't need to construct a categorical variable, because there are plenty of other examples in our dataset. Luckily, these are already converted into factors. We will construct a simpler version of one variable that describes household income (`HHINC3`): 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Create new categorical HHINC3 variable
+summary(mydf$HHINC3)
+mydf$HHINC2 <- factor(mydf$HHINC3, 
+                      levels=c("$35,000 to $74,999", "Less than $35,000", "$75,000 or more", "Unknown"), 
+                      labels=c("Below", "Below", "Above", "Unknown"), ordered=F)
+summary(mydf$HHINC2)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python}
+# Create new categorical HHINC3 variable
+mydf["HHINC3"].value_counts().sort_index()
+temp_map = {"Less than $35,000":"Below", 
+            "$35,000 to $74,999":"Below", 
+            "$75,000 or more":"Above", 
+            "Unknown":"Unknown"}
+mydf["HHINC2"] = mydf["HHINC3"].replace(temp_map)
+mydf["HHINC2"] = pd.Categorical(mydf["HHINC2"], 
+    categories=["Below", "Above", "Unknown"], ordered=False)
+mydf["HHINC2"].value_counts().sort_index()
+```
+
+:::
+::::::::::::::
+
+Another important issue is how categorical variables enter a linear regression model: not as one variable, but as a series of **binary {0,1} (or dummy) variables** for each category. This is pretty clever, because the $\beta$ associated with each category will only apply to observations in that category ($\beta \times 1 = \beta$) and not to observations in other categories ($\beta \times 0 = 0$). Crucially, one category cannot enter the model; otherwise, there will be perfect multicollinearity (to be discussed in a later tutorial) and the model will not estimate. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+Let's estimate our model using a categorical variable. Luckily, R will interpret a factor properly and omit one (the first) category by default: 
+
+```{r}
+# Linear regression model with one categorical IV
+mymod2 <- lm(MODE_TOT ~ HHINC2, data=mydf)
+summary(mymod2)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+Let's estimate our model using a categorical variable. Luckily, Python will interpret a categorical properly and omit one (the first) category by default: 
+
+```{python}
+# Linear regression model with one categorical IV
+mymod2 = smf.ols("MODE_TOT ~ HHINC2", data=mydf).fit()
+mymod2.summary()
+```
+
+:::
+::::::::::::::
+
+The category that does not enter the model is called the "base" category, group, or level. All categorical IV results are interpreted *relative to this base category*. If we consider "Below" (less than median income) to be the base category, here are how the dummy variables enter the model: 
+
+* Below median income: $X_{Above} = 0$, $X_{Unknown} = 0$
+* Above median income: $X_{Above} = 1$, $X_{Unknown} = 0$
+* Unknown income: $X_{Above} = 0$, $X_{Unknown} = 1$
+
+For instance, the positive (and marginally statistically-significant) parameter for `Above` suggests that people in households with above average income reported more trips use than people in below-average income households. So, what does the positive (and statistically-significant) parameter for `Unknown` suggest? 
+
+Another note regarding parameter interpretation: Mathematically, the model treats categorical variables identical to continuous variables, it just happens that they only take the values 0 and 1. Thus, interpreting $\beta_k$ is the same: **a one-unit increase in (categorical) $X$ is associated with a $\beta_k$ unit increase in $Y$**. It's just that the one-unit increase corresponds to a change from (or difference between) the base category and the category you are looking at. 
+
+The selection of a specific "base" category is a decision make purely out of convenience of interpretation; statistically, it makes no difference. Usually, I like to select a "base" category that is either the most frequent (in this case, below-average income) and/or considered to be the "default" category, one that I am less interested in. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+Let's make the base category the highest one, "above average income". In R, we can use the `relevel()` function to re-code the levels of the factor: 
+
+```{r}
+# Re-level HHINC2
+mydf$HHINC2 <- relevel(mydf$HHINC2, ref="Above")
+
+# Linear regression model with one categorical IV
+mymod3 <- lm(MODE_TOT ~ HHINC2, data=mydf)
+summary(mymod3)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+Let's make the base category the highest one, "above average income". In Python, we can use the `reorder_categories()` function to re-code the levels of the categorical: 
+
+```{python}
+# Re-level HHINC2
+mydf["HHINC2"] = mydf["HHINC2"].cat.reorder_categories(["Above", "Below", "Unknown"])
+
+# Linear regression model with one categorical IV
+mymod3 = smf.ols("MODE_TOT ~ HHINC2", data=mydf).fit()
+mymod3.summary()
+```
+
+:::
+::::::::::::::
+
+Notice that all of the parameter estimates have changed; this make sense. Since the base or reference category has changed, the parameters are now representing the difference with that category instead. (Notice that the parameter estimate for `Below` is exactly the negative of the previous parameter estimate for `Above`.) However, notice that the $R^2$ and other goodness-of-fit values did not change. The model is identical; it just uses a different reference category for the IV. 
+
+To verify what is happening, let's look at the average values of our dependent variable for observations in each of our four categories: 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Create table of means by category
+for (i in levels(mydf$HHINC2)) {
+  temp <- mean(mydf$MODE_TOT[mydf$HHINC2==i], na.rm=T)
+  print(paste(round(temp,4), i, sep="  "))
+}; rm(i)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python}
+# Create table of means by category
+for i in mydf["HHINC2"].dropna().unique():
+    temp = mydf.loc[mydf["HHINC2"]==i, "MODE_TOT"].mean(skipna=True)
+    print(f"{round(temp, 4)}  {i}")
+del i
+```
+
+:::
+::::::::::::::
+
+As expected, the intercept in `mymod2` in the average trips for people in below-average income households, while the intercept in `mymod3` is the average trips for people in above-income households (these are the reference categories in each model). Notice how the `HHINC2` coefficients in each model are just the differences in the means between the different groups of `HHINC2`, depending on which is subtracted from which. 
+
+### ...with multiple predictors
+
+We can have (and often want) more than one IV in our model. This allows us to include multiple influencing factors, and linear regression allows us to estimate the association between the DV and each IV, _controlling for other factors_. This is important: basically, we can get an association that is unique and accounts for the association of all the other IVs. Our IVs can be a combination of continuous and categorical variables. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Linear regression model with multiple IVs
+mydf$HHINC2 <- relevel(mydf$HHINC2, ref="Below")
+mymod4 <- lm(MODE_TOT ~ HHNPER + HHINC2, data=mydf)
+summary(mymod4)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python}
+# Linear regression model with multiple IVs
+mydf["HHINC2"] = mydf["HHINC2"].cat.reorder_categories(["Below", "Above", "Unknown"])
+mymod4 = smf.ols("MODE_TOT ~ HHNPER + HHINC2", data=mydf).fit()
+mymod4.summary()
+```
+
+:::
+::::::::::::::
+
+The interpretation proceeds in a similar manner as the one-IV case. In this situation, all of the IVs (and IV categories) were statistically significant ($p < 0.05$) (or statistically significantly different from the base category). We can say: "Having more adults in one's household was negatively associated with the number of trips made per person" and provide the results ($\beta$, $SE$, $p$). Furthermore: "People with one more additional adult in their household would be predicted to make around `r abs(round(summary(mymod4)$coefficients[2,1],2))` fewer trips per day." Also: "Compared to people in households with below-median income, people in households with higher-than median income (and those not reporting their income level) both took more trips per day." 
+
+### Nested model comparison tests
+
+Our $R^2$ value increased to `r round(summary(mymod4)$r.squared, 2)`. Was that a big or a small increase? We can get a sense by conducting a **nested model comparison test**. Basically, this test compares the overall goodness-of-fit of two **nested** models: one is a _constrained_ version of the other, where some parameters are constrained to be certain values (not estimated). For example: 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+mymod1$call
+mymod4$call
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python}
+mymod1.model.formula
+mymod4.model.formula
+```
+
+:::
+::::::::::::::
+
+The only difference between the formulas of these two models is that we added two additional variables. The first model was equivalent to the last model, except that the parameters for these additional variables were constrained to equal zero: $\beta_k = 0$. Thus, they are nested models! 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+To perform a nested model comparison test in R, we have to install and load the *lmtest* package. Then we can use the `lrtest()` function to perform a [likelihood-ratio test](https://en.wikipedia.org/wiki/Likelihood-ratio_test): 
+
+```{r, warning=F, message=F}
+# install.packages("lmtest")
+library(lmtest)
+
+# Likelihood ratio test on nested models
+lrtest(mymod1, mymod4)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python, warning=F, message=F}
+from statsmodels.stats.anova import anova_lm
+
+# Likelihood ratio test on nested models
+mymod1.llf
+mymod4.llf
+anova_lm(mymod1, mymod4)
+```
+
+:::
+::::::::::::::
+
+The likelihood-ratio statistic is calculated as negative two times the difference in the log-likelihoods of each model (estimated using the ML method). It is distributed $\chi^2$ with $df$ the difference in the $df$ of each model. Since this test is statistically significant, this indicates that the addition of the two variables yielded a better fitting model, or that there was a statistically-significant difference between the goodness-of-fits of the two models. 
+
+## Other tips
+
+### ...with interaction terms
+
+There is one other type of variable you sometimes may want to include in a linear regression model: an interaction term. **Interactions** are basically new variables that are the product of two (or more) other variables. They are used to analyze more complex hypotheses. For example, instead of testing if there is an association between the DV and one IV, we can use an interaction term to examine if the association between the DV and one IV changes depending on the value (or level) of a different IV. 
+
+Interaction terms can be created using two continuous variables, two categorical variables, or one continuous and one categorical variable. In all cases, you will almost always want to include the original IVs in the model in their un-interacted forms. 
+
+Let's say we want to see if the association between the number of adults and the number of trips depends upon the level of household income. We can simply use the `:` operator in our model formula to specify the interaction: 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Linear regression model with interaction
+mymod5 <- lm(MODE_TOT ~ HHNPER + HHINC2 + HHNPER:HHINC2, data=mydf)
+summary(mymod5)
+
+# Linear regression model with interaction
+mymod6 <- lm(MODE_TOT ~ HHNPER_ + HHINC2 + HHNPER_:HHINC2, data=mydf)
+summary(mymod6)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python}
+# Linear regression model with interaction
+mymod5 = smf.ols("MODE_TOT ~ HHNPER + HHINC2 + HHNPER:HHINC2", data=mydf).fit()
+mymod5.summary()
+
+# Linear regression model with interaction
+mymod6 = smf.ols("MODE_TOT ~ HHNPER_ + HHINC2 + HHNPER_:HHINC2", data=mydf).fit()
+mymod6.summary()
+```
+
+:::
+::::::::::::::
+
+### Formulas for variable interactions and transformations
+
+The formula aspect of a linear model is very flexible; see `?formula`. First, to specify an interaction, you can use the `*` symbol alone, and the non-interacted variables are  automatically included in the model as well: 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r, eval=F}
+# Equivalent representations of an interaction
+mymod <- lm(DV ~ IV1 + IV2 + IV1:IV2, data=mydf)
+mymod <- lm(DV ~ IV1*IV2, data=mydf)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python, eval=F}
+# Equivalent representations of an interaction
+mymod = smf.ols("DV ~ IV1 + IV2 + IV1:IV2", data=mydf).fit()
+mymod = smf.ols("DV ~ IV1*IV2", data=mydf).fit()
+```
+
+:::
+::::::::::::::
+
+Second, you can perform computations of variables directly in the model formula. This can be particularly useful if you want to transform a variable. Also, by wrapping code within the function `I()`, you can perform any arithmetic computations you want to. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r, eval=F}
+# Transform variables
+mymod <- lm(DV ~ IV1 + IV2 + IV2^2, data=mydf)
+mymod <- lm(log(DV) ~ IV1 + exp(IV2), data=mydf)
+
+# Compute new variables
+mymod <- lm(DV ~ IV1 + I(IV2 - 2*IV3), data=mydf)
+mymod <- lm(DV ~ IV1 + IV2 + I(IV2^2), data=mydf)
+
+# Select levels of variables
+mymod <- lm(DV ~ IV1 + I(IV2==TRUE), data=mydf)
+mymod <- lm(DV ~ I(IV1<5) + IV2, data=mydf)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python, eval=F}
+# Transform variables
+mymod = smf.ols("DV ~ IV1 + IV2 + I(IV2**2)", data=mydf).fit()
+mymod = smf.ols("np.log(DV) ~ IV1 + np.exp(IV2)", data=mydf).fit()
+
+# Compute new variables
+mymod = smf.ols("DV ~ IV1 + I(IV2 - 2*IV3)", data=mydf).fit()
+mymod = smf.ols("DV ~ IV1 + IV2 + I(IV2**2)", data=mydf).fit()
+
+# Select levels of variables
+mymod = smf.ols("DV ~ IV1 + (IV2==True)", data=mydf).fit()
+mymod = smf.ols("DV ~ (IV1<5) + IV2", data=mydf).fit()
+```
+
+:::
+::::::::::::::
+
+### Writing up your results
+
+It can be difficult at first to learn how to write about your results in English. After doing this for a while, and reading a lot of other papers, here is an example of how I like to write-up and report the results of a regression model in text. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+summary(mymod4)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python}
+mymod4.summary()
+```
+
+:::
+::::::::::::::
+
+A linear regression model ($N = 1765$, $R^{2} = 0.007$) examined the relationships between daily trips made per person and both the number of adults in a household as well as the household income level. Household size was significantly associated with trip-making ($\beta = -0.245$, $SE = 0.100$, $t = -2.45$, $p = 0.015$): People with one additional adult in their household were predicted to make around $0.25$ fewer trips per day. Compared to people in below-median-income households, other people reported more trips per day, but the difference was larger for people who did not report their income level ($\beta = 0.500$, $SE = 0.241$, $t = 2.06$, $p = 0.040$) than for people who reported a household income above the median ($\beta = 0.293$, $SE = 0.130$, $t = 2.26$, $p = 0.024$). 
+
+## Review
+
+* Can you estimate linear regression models with various specifications: 
+    * One continuous independent variable? 
+    * One categorical independent variable? 
+    * Multiple independent variables? 
+* Can you interpret the results of hypothesis testing of model parameters?
+* Can you write technically about the results of an estimate linear regression model? 
+* Can you compare results from two nested models? 
+
+**END**

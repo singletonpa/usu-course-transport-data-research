@@ -1,0 +1,918 @@
+---
+title: "Time series regression"
+author: "Patrick A. Singleton"
+format: 
+    html:
+        embed-resources: true
+engine: knitr
+knitr:
+  opts_knit:
+    root.dir: ".."
+---
+
+### Objectives & outcomes
+
+The objectives of this tutorial are to: 
+
+* Understand what a time series is. 
+* Understand what the components of a time series are. 
+* Learn how to decompose a time series into components.  
+* Practice doing basic multivariate time series regression. 
+
+At the end of this tutorial, you should be able to: 
+
+* Create and plot a univariate time series. 
+* Decompose a time series into seasonal, trend, and error components. 
+* Estimate a linear time series regression model. 
+
+```{r}
+#| echo: false
+# some code to make the tutorial work
+library(reticulate)
+py_require("numpy")
+py_require("pandas")
+py_require("statsmodels")
+py_require("plotnine")
+```
+
+### Transportation dataset
+
+For this tutorial, we will use data from the *Logan non-motorized trail count data* project. The datasets include information on daily counts of non-motorized (walking and bicycling) traffic at two locations: along the Boulevard Trail in Logan (*Boulevard*), and along a trail in Green Canyon (*GreenCanyon*). There are also weather (*Weather*) and air quality (*AirQuality*) data for the same dates. You can access these data from the [Transportation datasets](https://github.com/singletonpa/usu-course-transport-data-research/blob/main/Data/Transportation_datasets.md) page on GitHub. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Load data from GitHub
+Boulevard <- read.csv(file=url("https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Logan_trail_counts/Boulevard.csv", method="libcurl"))
+GreenCanyon <- read.csv(file=url("https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Logan_trail_counts/GreenCanyon.csv", method="libcurl"))
+Weather <- read.csv(file=url("https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Logan_trail_counts/Weather.csv", method="libcurl"))
+AirQuality <- read.csv(file=url("https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Logan_trail_counts/AirQuality.csv", method="libcurl"))
+
+# Rename columns
+names(Boulevard) <- c("Date", "CountBL")
+names(GreenCanyon) <- c("Date", "CountGC")
+
+# Merging data together using common column "Date"
+dat <- merge(Boulevard, GreenCanyon, by="Date", all.x=T, all.y=T)
+dat <- merge(dat, Weather, by="Date", all.x=T, all.y=T)
+dat <- merge(dat, AirQuality, by="Date", all.x=T, all.y=T)
+
+# Format date
+dat$Date <- as.Date(dat$Date, format="%Y-%m-%d")
+
+# Extract other info from date
+dat$Year <- strftime(dat$Date, format="%Y")
+dat$Month <- strftime(dat$Date, format="%m")
+dat$Weekday <- strftime(dat$Date, format="%a")
+
+# Convert text to factor
+dat$Year <- factor(dat$Year, levels=c("2018", "2019"))
+dat$Month <- factor(dat$Month, levels=c("01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"), 
+    labels=c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))
+dat$Weekday <- factor(dat$Weekday, levels=c("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"))
+
+# Inspect
+str(dat)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python}
+# Load modules
+import pandas as pd
+import numpy as np
+
+# Changing setting until pandas 3.0
+pd.options.mode.copy_on_write = True
+
+# Load data from GitHub
+Boulevard = pd.read_csv("https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Logan_trail_counts/Boulevard.csv")
+GreenCanyon = pd.read_csv("https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Logan_trail_counts/GreenCanyon.csv")
+Weather = pd.read_csv("https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Logan_trail_counts/Weather.csv")
+AirQuality = pd.read_csv("https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Logan_trail_counts/AirQuality.csv")
+
+# Rename columns
+Boulevard.rename(columns={'Count':'CountBL'}, inplace=True)
+GreenCanyon.rename(columns={'Count':'CountGC'}, inplace=True)
+
+# Merging data together using common column 'Date'
+dat = pd.merge(Boulevard, GreenCanyon, on='Date', how='outer')
+dat = pd.merge(dat, Weather, on='Date', how='outer')
+dat = pd.merge(dat, AirQuality, on='Date', how='outer')
+
+# Format date
+dat['Date'] = pd.to_datetime(dat['Date'], format='%Y-%m-%d')
+
+# Extract other info from date
+dat['Year'] = dat['Date'].dt.strftime('%Y')
+dat['Month'] = dat['Date'].dt.strftime('%b')
+dat['Weekday'] = dat['Date'].dt.strftime('%a')
+
+# Convert text to factor
+dat['Year'] = dat['Year'].astype('category')
+month_labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+dat['Month'] = pd.Categorical(dat['Month'], categories=month_labels)
+weekday_labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+dat['Weekday'] = pd.Categorical(dat['Weekday'], categories=weekday_labels)
+del month_labels, weekday_labels
+
+# Inspect
+dat.info()
+```
+
+:::
+::::::::::::::
+
+## Time series fundamentals
+
+A **time series** is basically a sequence of repeated observations of the same variable over time. Time series data tell us valuable information about how a variable changes over time, and through regression we can examine systematic variations and associations with other factors that also change over time. For example, we may want to examine the relationship between temperature and bicycling, or the effect of a transit fare increase on public transit ridership. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+There is a special _time series_ object in R that is either a vector (one dimension) or matrix (two dimensions) of data measured at multiple, equal-spaced time intervals. We can create a time series using the `ts()` function: 
+
+```{r}
+# Create a time series
+myts <- ts(dat$CountBL)
+str(myts)
+head(myts,100)
+plot(myts, ylim=c(0, max(dat$CountBL)), las=1, 
+  xlab="Day", ylab="Daily volume", 
+  main="Time series of daily Boulevard Trail use")
+```
+
+If we have data that exhibit repetitive patterns over time (such as by hour of the day, day of the week, or month of the year), we can specify a frequency by which the data repeat. For example, we can plot our observations over weeks: 
+
+```{r}
+# Create a time series
+myts <- ts(dat$CountBL, frequency=7)
+plot(myts, ylim=c(0, max(dat$CountBL)), las=1, 
+  xlab="Week", ylab="Daily volume", 
+  main="Time series of daily Boulevard Trail use")
+```
+
+Alternatively, we could have specified the week of the year: 
+
+```{r, eval=F}
+# Create a time series (not run)
+myweek <- as.numeric(format(dat$Date[1], format="%U")) # gets week of year, 1=first sunday
+myweekday <- as.numeric(format(dat$Date[1], format="%w")) # get day of week, 0=sunday
+myts <- ts(dat$CountBL, start=c(myweek, myweekday), frequency=7)
+plot(myts, ylim=c(0, max(dat$CountBL)), las=1, 
+  xlab="Week", ylab="Daily volume", 
+  main="Time series of daily Boulevard Trail use")
+```
+
+If we have a very long time series, we could even specify the day of the year: 
+
+```{r, eval=F}
+# Create a time series (not run)
+myyear <- as.numeric(format(dat$Date[1], format="%Y")) # get year
+myyearday <- as.numeric(format(dat$Date[1], format="%j")) # get day of year, 1=jan 1st
+myts <- ts(dat$CountBL, start=c(myyear, myyearday), frequency=365.25)
+plot(myts, ylim=c(0, max(dat$CountBL)), las=1, 
+  xlab="Day of Year", ylab="Daily volume", 
+  main="Time series of daily Boulevard Trail use")
+```
+
+However, the proper way to represent a multi-year daily time series is probably by specifying both weekly and annual periods. We can do this with the `msts()` function from the `forecast` package: 
+
+```{r, warning=F, message=F, eval=F}
+# install.packages("forecast")
+library("forecast")
+# Create a time series (not run)
+myts <- msts(dat$CountBL, seasonal.periods=c(7, 365.25), start=c(myyear, myyearday))
+str(myts)
+head(myts, 100)
+plot(myts, ylim=c(0, max(dat$CountBL)), las=1, 
+  ylab="Daily volume", 
+  main="Time series of daily Boulevard Trail use")
+```
+
+No matter what we do, this should look identical to a simple scatterplot of our data over time: 
+
+```{r}
+plot(dat$Date, dat$CountBL, 
+  ylim=c(0, max(dat$CountBL)), las=1, type="l", 
+  xlab="Month", ylab="Daily volume", 
+  main="Time series of daily Boulevard Trail use")
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, you can create a _time series_ object that is either a series (one dimension) or a dataframe (two dimensions) of data measured at multiple, equal-spaced time intervals. We can create a daily time series using the `date_range()` function, specify the frequency as daily (`freq='D'`), and setting the index of a series or dataframe to the time units. 
+
+```{python}
+# Create a time series
+first_date = pd.to_datetime(dat["Date"].iloc[0])
+myweek = int(first_date.strftime("%U"))  # Week number (Sunday as first day)
+myweekday = int(first_date.strftime("%w"))  # Day of week (0=Sunday)
+ts_index = pd.date_range(start=first_date, periods=len(dat), freq='D')
+myts = pd.Series(dat["CountBL"].values, index=ts_index)
+del first_date, myweek, myweekday
+
+# Inspect
+myts
+```
+
+```{python}
+# Load packages
+import plotnine as p9
+
+# Plot time series
+temp = pd.DataFrame({"CountBL":myts, "Date":myts.index})
+(p9.ggplot(temp, p9.aes(x="Date", y="CountBL")) +
+  p9.geom_line() +
+  p9.labs(x="Date", y="Daily volume",
+    title = "Time series of daily Boulevard Trail use") +
+  p9.theme_minimal()
+  ).show()
+```
+
+This should look identical to a simple scatterplot of our data over time: 
+
+```{python}
+del temp
+
+(p9.ggplot(dat, p9.aes(x="Date", y="CountBL")) +
+  p9.geom_line() +
+  p9.labs(x="Date", y="Daily volume",
+    title = "Time series of daily Boulevard Trail use") +
+  p9.theme_minimal()
+  ).show()
+```
+:::
+::::::::::::::
+
+### Time series components
+
+Traditional analyses of time series data assume that we can break up the values of a time series $Y_t = f(T_t, S_t, E_t)$ into three components: a *trend component $T_t$*, a *seasonal component $S_t$*, and an *irregular (or random) component $E_t$*. 
+
+* The **trend component $T_t$** in a time series is a long-term change, movement, or direction in the dataset. In some cases, time series analyses involve removing the trend to reveal an underlying periodic component. The assumption is that the underlying trend is less important (or unimportant) than the seasonal component or relationship under study. In other cases, we are more interested in the long-term trend and just want to control for the seasonal component. 
+* The **seasonal component $S_t$** in a time series is a shorter-term pattern that repeats within a constant time period. Although this is called a "seasonal" pattern, it really refers to any representative temporal pattern. Depending on the time analyzed, the seasonal component of traffic count data could be the patterns over the hours of a day, days of a week, or months of a year. 
+* The **irregular (random) component $E_t$** is the remainder (i.e., error or residual) of the time series after removing trend and seasonal components. 
+
+These trends often interact **additively ($Y_t = T_t + S_t + E_t$)**, when the seasonal component is constant over the series. Other times, when the seasonal component increases (or decreases) with the level of the series, the components may interact **multiplicatively ($Y_t = T_t \times S_t \times E_t$)**; but this can be represented linearly using transformations ($ln(Y_t) = ln(T_t) + ln(S_t) + ln(E_t)$). 
+
+In R, there are a few ways of **filtering** or removing the *trend component* from the data. Removing the trend often helps to illuminate the seasonal component or relationship that is being studied. For example, if you are studying the relationship between weather and traffic volumes, you likely want to remove any long-term increase in traffic due to general population increases in the region. Let's briefly look at two methods to do this: 
+
+* The [loess method](https://en.wikipedia.org/wiki/Local_regression), a form of smoothing filter, decomposes a time series into components. 
+* The [moving averages](https://en.wikipedia.org/wiki/Moving-average_model) method also decomposes a times series into components. 
+
+Let's take a look at these methods and their results. For now, let's just assume additive (not multiplicative) components. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, you can use the `stl()` function for the loess method, and the `decompose()` function for the moving averages method. 
+
+```{r}
+# Create a time series
+myweek <- as.numeric(format(dat$Date[1], format="%U")) # gets week of year, 1=first sunday
+myweekday <- as.numeric(format(dat$Date[1], format="%w")) # get day of week, 0=sunday
+myts <- ts(dat$CountBL, start=c(myweek, myweekday), frequency=7)
+
+# Time series seasonal decomposition
+# using stl()
+myts_decomp1 <- stl(myts, s.window="periodic")
+plot(myts_decomp1)
+# using decompose() & additive components
+myts_decomp2 <- decompose(myts, type="additive")
+plot(myts_decomp2)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, you can use the `stl()` function for the loess method, and the `decompose()` function for the moving averages method. 
+
+```{python}
+# Load functions from packages
+from statsmodels.tsa.seasonal import STL, seasonal_decompose
+
+# Decompose the time series
+# using STL()
+stl = STL(myts, period=7)
+myts_decomp1 = stl.fit()
+(myts_decomp1.plot()).show()
+```
+
+```{python}
+# using seasonal_decompose() & additive components
+myts_decomp2 = seasonal_decompose(myts, model='additive', period=7)
+(myts_decomp2.plot()).show()
+```
+
+:::
+::::::::::::::
+
+Notice that each method splits the original time series (data or observed) into the seasonal, trend, and remainder (or random) components. 
+
+* For the *seasonal component*, notice how the results are identical from week to week; this is because we specified our time series to have a period of 7 days. Normally, our multiplicative seasonal component would look different (either grow or decay over time), but our time series is likely too short to show this. 
+* The *trend component* (hopefully) shows us an underlying trend in the data, once we remove the periodic seasonal component. Thus, if we remove week-to-week variation, we hope that we can explain this trend in traffic (plus any error remaining) as a function of other outside factors (like weather). We will do this more explicitly in time series regression, next. 
+* The *error or remainder* is what is left in the time series after removing the seasonal and trend components. We want this to have no pattern: errors should be random with no similar (nearby errors are both positive or negative), opposite (nearby errors jump between positive and negative), or periodic (errors repeat in a pattern) trends. We will examine some of the specific assumptions about error terms when we look at time series regression, next. 
+
+## Time series regression
+
+Fundamentally, time series regression is trying to do the same thing as is done for linear regression: explain variations in *dependent variables (DV) $Y$* using one or more *independent variables (IVs) $X$*. The difference is that, for regression of a single time series, our DV $Y_t$ and our IVs $X_t$ are all time-varying variables; i.e., they change over time. Again, we can use both *continuous* and *categorical* IVs in our models. 
+
+Remember the seasonal component of our time series decomposition? We can remove this component (assuming additivity) using linear regression! We just have to include a categorical variable (with each day of the week) in our regression model. Let's try it using a simple linear regression model and our original dataset. (Note: We do not need to create a _time series_ variable for this to work.)
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Time series regression model, seasonality
+mymod1 <- lm(CountBL ~ Weekday, data=dat)
+summary(mymod1)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python}
+# Load packages
+import statsmodels.formula.api as smf
+
+# Time series regression model, seasonality
+mymod1 = smf.ols("CountBL ~ Weekday", data=dat).fit()
+mymod1.summary()
+```
+
+:::
+::::::::::::::
+
+Notice and interpret the linear regression outputs. The reference category for our "weekday" variable is `r levels(dat$Weekday)[1]`, so we interpret the parameters for the rest of the categories in comparison to that day. An average `r levels(dat$Weekday)[1]` sees non-motorized traffic of `r round(mymod1$coefficients[1],0)` people; `r levels(dat$Weekday)[5]` tends to see `r round(mymod1$coefficients[5]*-1,0)` less people, while `r levels(dat$Weekday)[7]` tends to see `r round(mymod1$coefficients[7]*-1,0)` less people. The p-values tell you about the hypothesis test of equal traffic on each weekday versus `r levels(dat$Weekday)[1]`. 
+
+Also, look at the $R^2$ value of `r round(summary(mymod1)$r.squared,2)`. This is usually higher than most of the goodness-of-fit statistics we obtained from the previous linear regression models we've investigated. In general, your $R^2$ for a time series regression will be fairly high, for several reasons. First, the DV is a time series (a repeated observation of the same variable), so it is more likely to naturally have a consistent value. Second, our time series frequently follows a consistent "seasonal" pattern, so we can usually predict it fairly well using just time-related variables: time for the seasonal component, or trend as a function of time. Thus, with no "outside" IVs, our time series model usually has a high goodness-of-fit. 
+
+Now, let's plot our predicted values and residuals: 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Plot results of time series regression
+plot(dat$Date, mymod1$fitted.values, type="l", las=1, 
+  xlab="Date", ylab="Daily volume", 
+  main="Seasonal component") # plot predicted values (seasonal)
+plot(dat$Date, mymod1$residuals, type="l", las=1, 
+  xlab="Date", ylab="Daily volume", 
+  main="Trend + error components") # plot residuals (trend + error)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python}
+# Get results of time series regression
+dat["fitted"] = mymod1.fittedvalues
+dat["resid"] = mymod1.resid
+
+# Plot results of time series regression
+(p9.ggplot(dat, p9.aes(x="Date", y="fitted")) + 
+  p9.geom_line() + 
+  p9.labs(x="Date", y="Daily volume", 
+    title="Seasonal component") + 
+  p9.theme_minimal()
+  ).show() # plot predicted values (seasonal)
+(p9.ggplot(dat, p9.aes(x="Date", y="resid")) + 
+  p9.geom_line() + 
+  p9.labs(x="Date", y="Daily volume", 
+    title="Trend + error components") + 
+  p9.theme_minimal()
+  ).show() # plot residuals (trend + error)
+```
+
+:::
+::::::::::::::
+
+Notice that the plot of the predicted values $\hat Y_t$ looks just like the seasonal plots from the decomposition functions. That's because we are only including IVs to represent the average variations within a week. Our plot of residuals looks like a combination of the trend and error plots we saw earlier; that's because it is! 
+
+Now, let's try to account for true seasonal (monthly) variation. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, we'll use the `update()` function to change the formula of our model. (The `.` symbols indicate to use the same thing as before.)
+
+```{r}
+# Time series regression model, with weekdays + months
+mymod2 <- update(mymod1, formula= . ~ . + Month)
+summary(mymod2)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python}
+# Time series regression model, with weekdays + months
+mymod2 = smf.ols("CountBL ~ Weekday + Month", data=dat).fit()
+mymod2.summary()
+```
+
+:::
+::::::::::::::
+
+It looks like this is monthly in addition to weekly variation. The $R^2$ value increased considerably. Again, let's plot our predicted values and residuals: 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Plot results of time series regression
+plot(dat$Date, mymod2$fitted.values, type="l", las=1, 
+  xlab="Date", ylab="Daily volume", 
+  main="Explained / seasonal components") # plot predicted values (seasonal)
+plot(dat$Date, mymod2$residuals, type="l", las=1, 
+  xlab="Date", ylab="Daily volume", 
+  main="Remaining trend + error components") # plot residuals (trend + error)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python}
+# Get results of time series regression
+dat["fitted"] = mymod2.fittedvalues
+dat["resid"] = mymod2.resid
+
+# Plot results of time series regression
+(p9.ggplot(dat, p9.aes(x="Date", y="fitted")) + 
+  p9.geom_line() + 
+  p9.labs(x="Date", y="Daily volume", 
+    title="Seasonal component") + 
+  p9.theme_minimal()
+  ).show() # plot predicted values (seasonal)
+(p9.ggplot(dat, p9.aes(x="Date", y="resid")) + 
+  p9.geom_line() + 
+  p9.labs(x="Date", y="Daily volume", 
+    title="Trend + error components") + 
+  p9.theme_minimal()
+  ).show() # plot residuals (trend + error)
+```
+:::
+::::::::::::::
+
+Now, let's try to account for weather impacts on non-motorized traffic. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Time series regression model, with weekdays + months + weather
+mymod3 <- update(mymod2, formula= . ~ . + Temp_Max + Temp_Min + Precipitation)
+summary(mymod3)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python}
+# Time series regression model, with weekdays + months + weather
+mymod3 = smf.ols("CountBL ~ Weekday + Month + Temp_Max + Temp_Min + Precipitation", data=dat).fit()
+mymod3.summary()
+```
+
+:::
+::::::::::::::
+
+It looks like we see some impacts of weather: traffic seems to go up slightly on days with higher minimum temperatures and down on days with more precipitation. However, I'm guessing we have some non-linear relationships and multicollinarity in our model: max/min temperatures tend to trend together, and effects may not be present except in more extreme situations (high or low temps, lots of rain). 
+
+So, let's consider some of these extreme situations. I'm guessing (hypothesizing) there might not be temperature effects until above 90F, below freezing (32F), and above 0in. (You can make your own guesses.) So, I'll create dummy variables for these and re-estimate my model. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, we can wrap these conditional statements in the function `I()`: 
+
+```{r}
+# Time series regression model, with weekdays + months + weather
+mymod4 <- update(mymod2, formula= . ~ . + I(Temp_Max>90) + I(Temp_Min<32) + I(Precipitation>0))
+summary(mymod4)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, we need to create new variables before we can use them in the model: 
+
+```{python}
+# Create new variables
+dat["TMAX90"] = (dat["Temp_Max"] > 90).astype(int)
+dat["TMIN32"] = (dat["Temp_Min"] < 32).astype(int)
+dat["PRCPANY"] = (dat["Precipitation"] > 0).astype(int)
+
+# Time series regression model, with weekdays + months + weather
+mymod4 = smf.ols("CountBL ~ Weekday + Month + TMAX90 + TMIN32 + PRCPANY", data=dat).fit()
+mymod4.summary()
+```
+
+:::
+::::::::::::::
+
+Comparing our model results to the one above, we seem to have improved things slightly ($R^2$), and all our weather variables are now significant. Result will depend upon what you assume for your weather extremes and your specific time series. 
+
+## Time series regression assumptions
+
+Regression with time series involves additional issues and concepts, due to the nature of time series data. There are more complicated considerations with time series analysis, which is more complicated than regular linear regression. 
+
+### Autocorrelation and stationarity
+
+Two concepts are particularly important to understand when analyzing time series data: *stationarity* and *autocorrelation*. 
+
+* **Stationarity**: A time series $X_t$ must be at least *weakly stationary*; the mean and covariance of the time series must be constant over time. 
+    - First, this means that the mean of the times series $\sum_{t=t_1}^{t_1+L} \frac {X_t} {L}$ must be time invariant; that is, it cannot depend on the time interval $L$ or the start time $t_1$. It must be horizontal or without a trend. 
+    - Second, this means that the covariance between two observations of the time series $Cov(X_{t_1}, X_{t_1 + L})$ must also be time invariant. This covariance is called autocovariance $\gamma_K$. The variance of the time series is similar: $Var(X_t) = \gamma_0$. 
+    - This time difference $L$ is commonly called the "lag". It refers to how many observations in the future (or the past) is being influenced by the observation. 
+
+* **Autocorrelation**: The *autocorrelation* or serial correlation of a time series $X_t$ refers to the association between observations over a time interval or lag $L$. 
+    - The *autocorrelation coefficient* for a given lag $L$ is calculated as $\rho_L = \frac {Cov(X_t, X_{t-L})} {\sqrt {Var(X_t) Var X_{t-L}}} = \frac {Cov(X_t, X_{t-L})} {Var(X_t)} = \frac {\gamma_L} {\gamma_0}$. 
+    - If a time series is weakly stationary, $\rho_0 = 1$, $\rho_L = \rho_{-L}$, and $-1<\rho_L<1$. That is, the autocorrelation coefficient for any forward lag is equal to the same reverse lag, and all autocorrelation coefficients are between -1 and 1. 
+    - If a time series is non-stationary, then $|\rho_L| > 1$. The relationship between observations explodes. 
+    - A related term is the *partial autocorrelation coefficient* $\phi_{LL}$. It is the correlation between observations after removing any intervening effects. 
+
+#### Detecting non-stationarity and autocorrelation
+
+We can visually check for stationarity and autocorrelation using plots of the autocorrelation (and partial autocorrelation) coefficients. First, let's look at our original time series data: 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, use the `acf()` and `pacf()` functions. 
+
+```{r}
+# Plot autocorrelation coefficients
+acf(dat$CountBL)
+# Plot partial autocorrelation coefficients
+pacf(dat$CountBL)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, use the `plot_acf()` and `plot_pacf()` functions from `statsmodels`. 
+
+```{python}
+# Load functions from packages
+from statsmodels.graphics.tsaplots import plot_acf, plot_pacf
+
+# Plot autocorrelation coefficients
+plot_acf(dat["CountBL"])
+```
+
+```{python}
+# Plot partial autocorrelation coefficients
+plot_pacf(dat["CountBL"])
+```
+
+:::
+::::::::::::::
+
+Notice the peaked autocorrelation coefficients at lags of 7, 14, and 21: this shows the weekly "seasonality" patterns of traffic. However, the autocorrelation coefficients do reduce to near zero, so we do have a weakly stationary dataset. (A non-stationary time series would have high values for several time periods.)
+
+Now, let's look at the residuals from our time series regression, having removed the seasonal component and some of the trend: 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Plot autocorrelation coefficients
+acf(mymod4$residuals)
+# Plot partial autocorrelation coefficients
+pacf(mymod4$residuals)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python}
+# Plot autocorrelation coefficients
+plot_acf(mymod4.resid)
+```
+
+```{python}
+# Plot partial autocorrelation coefficients
+plot_pacf(mymod4.resid)
+```
+
+:::
+::::::::::::::
+
+This plots look somewhat better, although there are still some moderate autocorrelation coefficients at several lags, especially for $\gamma_0 = 1$, which we would expect from the weak stationarity assumption. 
+
+We can also calculate statistics to investigate stationarity and autocorrelation. The [Ljung-Box test](https://en.wikipedia.org/wiki/Ljung%E2%80%93Box_test) and the [Breusch-Godfrey test](https://en.wikipedia.org/wiki/Breusch%E2%80%93Godfrey_test) both examine the null hypothesis of no autocorrelation $H_0: \rho_1 = ... = \rho_m = 0$ for a given number of lags. Let's examine our original time series first, and then the residuals from our regression. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, you can use the `Box.text()` function on the residuals for the Ljung-Box test, and/or the `bgtest()` function on the model for the Breusch-Godfrey test. 
+
+```{r, message=F, warning=F}
+# install.packages("lmtest")
+library("lmtest")
+
+# Original time series data
+Box.test(dat$CountBL, lag=14, type="Ljung-Box") # Ljung-Box test
+
+# Time series regression residuals
+Box.test(mymod4$residuals, lag=7, type="Ljung-Box") # Ljung-Box test
+bgtest(mymod4, order=7) # Breusch-Godfrey test
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, you can use the `acorr_ljungbox()` function on the residuals for the Ljung-Box test, and/or the `acorr_breusch_godfrey()` function on the model for the Breusch-Godfrey test, both from `statsmodels`. 
+
+```{python, message=F, warning=F}
+# Import functions from packages
+from statsmodels.stats.diagnostic import acorr_ljungbox
+from statsmodels.stats.diagnostic import acorr_breusch_godfrey
+
+# Original time series data
+LB1 = acorr_ljungbox(dat["CountBL"], lags=[14], return_df=True)
+print("Ljung-Box Test Results:")
+print(LB1)
+
+# Time series regression residuals
+LB2 = acorr_ljungbox(mymod4.resid, lags=[7], return_df=True)
+print("Ljung-Box Test Results:")
+print(LB2)
+BG2 = acorr_breusch_godfrey(mymod4, nlags=7)
+print("Breusch-Godfrey Test Results:")
+print(f"LM Statistic: {BG2[0]}")
+print(f"LM p-value: {BG2[1]}")
+print(f"F Statistic: {BG2[2]}")
+print(f"F p-value: {BG2[3]}")
+
+# Remove
+del LB1, LB2, BG2
+```
+
+:::
+::::::::::::::
+
+The original time series exhibits significant autocorrelation up to 7 and even 14 lags. This is not surprising based on our observation of the ACF plot. However, the results also indicate that we do have autocorrelation. An inspection of the ACF plot suggests that first-order autocorrelation may remain in our model. 
+
+#### Dealing with non-stationarity
+
+If our time series was non-stationary (after doing other filtering and de-trending, as we did earlier), the most common approach to creating a stationary time series is through **differencing**. For first-order differencing, this process basically creates a new time series data that is the difference between an observation and its previous value: $Z_t = X_t - X_{t-1}$. Then, you can check for stationarity again using the same methods as shown above. 
+
+#### Dealing with autocorrelation
+
+If you find autocorrelation in your time series, there are a number of approaches to accounting for the presence of serial correlation. 
+
+* One method is to account for first-order serial correlation by transforming the time series variables in our model. This transformation basically subtracts a portion of the previous observation, depending on the strength of the autocorrelation coefficient $\rho_1$: $Y_t^\prime = Y_t - \rho_1 Y_{t-1}$, $X_t^\prime = Y_t - \rho_1 Y_{t-1}$, and $u_t = \epsilon_t - \rho_1 \epsilon_{t-1}$. The regression now proceeds with the transformed variables: $Y_t^\prime = \beta_0 + \beta_1 X_t^\prime + ... + u_t$. 
+    - This is the common first-order autoregressive model known as AR(1). 
+    - There are several ways to estimate the appropriate autocorrelation coefficient $\rho_1$: the [Cochrane-Orcutt method](https://en.wikipedia.org/wiki/Cochrane%E2%80%93Orcutt_estimation), the [Prais-Winsten method](https://en.wikipedia.org/wiki/Prais%E2%80%93Winsten_estimation), the [Hildreth-Lu search procedure](https://en.wikipedia.org/wiki/Hildreth%E2%80%93Lu_estimation), and many others. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+For example, in R we can use the Cochrane-Orcutt function `cochorc()` from the `desk` package. 
+
+```{r, message=F, warning=F}
+# Load packages
+library("desk")
+
+# AR(1) model with Cochrane-Orcutt method
+mymod5 <- cochorc(mymod4)
+summary(mymod4) # original model
+mymod5$results # AR(1) model
+mymod5$rho.opt
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, there is no built-in functoin to use the Cochrane-Orcutt AR(1) method. Therefore, we must do all of the calculation steps ourselves: 
+
+```{python}
+# Import functions from packages
+from statsmodels.regression.linear_model import yule_walker
+import statsmodels.api as sm
+
+# Process data for more advanced modeling
+tdat = dat
+# - convert categoricals to dummy variables
+tdat = pd.get_dummies(tdat, columns=["Month", "Weekday"])
+tdat["const"] = 1
+y = tdat["CountBL"]
+X = tdat[["const", "Month_Feb", "Month_Mar", "Month_Apr", "Month_May", "Month_Jun", 
+  "Month_Jul", "Month_Aug", "Month_Sep", "Month_Oct", "Month_Nov", "Month_Dec", 
+  "Weekday_Tue", "Weekday_Wed", "Weekday_Thu", "Weekday_Fri", "Weekday_Sat", "Weekday_Sun", 
+  "TMAX90", "TMIN32", "PRCPANY"]]
+
+# Cochrane-Orcutt method (AR(1) only)
+# - estimate rho using Yule-Walker
+rho, _ = yule_walker(mymod4.resid, order=1)
+# - transform variables
+y_trans = y[1:] - rho * y[:-1].values
+X_trans = X[1:] - rho * X[:-1].values
+y_trans = pd.to_numeric(y_trans, errors='coerce')
+X_trans = X_trans.apply(pd.to_numeric, errors='coerce')
+X_trans = X_trans.dropna()
+y_trans = y_trans.loc[X_trans.index]
+# - fit transformed model
+mymod5 = sm.OLS(y_trans, X_trans).fit()
+
+# Compare models
+mymod4.summary() # original model
+mymod5.summary() # Cochrane-Orcutt
+rho
+```
+
+:::
+::::::::::::::
+
+Our estimated autocorrelation coefficient $\rho_1$ was `r round(mymod5$rho.opt, 3)`. Our model estimation results also changed slightly. 
+
+* Another method is to use a covariance matrix that is robust to autocorrelation. This is often called the [Newey-West autocorrelation-consistent covariance matrix](https://en.wikipedia.org/wiki/Newey%E2%80%93West_estimator). 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, we use the `vcovHAC()` function from the `sandwich` package to get this covariance matrix, which we then use to update our hypothesis testing of parameters with the `coeftest()` function from the `lmtest` package. 
+
+```{r, message=F, warning=F}
+# install.packages("sandwich")
+# install.packages("lmtest")
+library("sandwich")
+library("lmtest")
+
+# Correct for autocorrelation using a corrected variance-covariance matrix
+coeftest(mymod4) # original model
+coeftest(mymod4, vcov=vcovHAC(mymod4)) # with heterscedasticity-and-autocorrelation-corrected variance-covariance matrix
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, we can use the `get_robustcov_results()` method from `statsmodels`, using the `cov_type='HAC'` parameter. 
+
+```{python}
+# Correct for autocorrelation using a corrected variance-covariance matrix
+mymod4a = mymod4.get_robustcov_results(cov_type='HAC', maxlags=7)
+mymod4.summary() # original model
+mymod4a.summary() # with HAC VCOV
+```
+
+:::
+::::::::::::::
+
+#### ARIMA models
+
+A number of other approaches for dealing with autocorrelation (and non-stationarity) exist. In addition to the *autoregressive models AR(p)*, there are *moving average models MA(q)*, *integrated models I(d)*, and the combination *autoregressive integrated moving-average models ARIMA(p,d,q)*. You can read more about these ARIMA models in Chapter 8 of the textbook. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Load packages
+library(forecast)
+library(fastDummies)
+
+# Format data
+# - arima requires only numbers, no factors
+tdat <- dat
+tdat$CountBL_1k <- tdat$CountBL / 1000
+tdat <- dummy_cols(tdat, select_columns=c("Month", "Weekday"))
+tdat$TMAX90 <- ifelse(tdat$Temp_Max > 90, 1, 0)
+tdat$TMIN32 <- ifelse(tdat$Temp_Min < 32, 1, 0)
+tdat$PRCPANY <- ifelse(tdat$Precipitation > 0, 1, 0)
+tcol <- c("Month_Feb", "Month_Mar", "Month_Apr", "Month_May", "Month_Jun", 
+  "Month_Jul", "Month_Aug", "Month_Sep", "Month_Oct", "Month_Nov", "Month_Dec", 
+  "Weekday_Tue", "Weekday_Wed", "Weekday_Thu", "Weekday_Fri", "Weekday_Sat", "Weekday_Sun", 
+  "TMAX90", "TMIN32", "PRCPANY")
+
+# ARIMA model
+mymod6 <- Arima(y=tdat$CountBL_1k, order=c(7,0,0), xreg=as.matrix(tdat[,tcol]))
+summary(mymod6)
+checkresiduals(mymod6)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python}
+# Import functions from packages
+from statsmodels.tsa.arima.model import ARIMA
+
+# Prep data
+# mydates = tdat["Date"]
+# mydates = pd.date_range(start="2018-01-01", end="2019-12-31", freq="D")
+# tdat.index = mydates
+endog = tdat["CountBL"]
+exog = tdat[["Month_Feb", "Month_Mar", "Month_Apr", "Month_May", "Month_Jun", 
+  "Month_Jul", "Month_Aug", "Month_Sep", "Month_Oct", "Month_Nov", "Month_Dec", 
+  "Weekday_Tue", "Weekday_Wed", "Weekday_Thu", "Weekday_Fri", "Weekday_Sat", "Weekday_Sun", 
+  "TMAX90", "TMIN32", "PRCPANY"]]
+exog = exog.astype(float)
+# exog = exog.dropna()
+# endog = endog.loc[exog.index]
+
+# ARIMA model
+# mymod6 = ARIMA(tdat["CountBL"], order=(7,0,0)).fit()
+mymod6 = ARIMA(endog, order=(7,0,0), exog=exog).fit()
+
+# Inspect
+mymod6.summary()
+plot_acf(mymod6.resid)
+plot_pacf(mymod6.resid)
+LB3 = acorr_ljungbox(mymod6.resid, lags=[7], return_df=True)
+print("Ljung-Box Test Results:")
+print(LB3)
+del LB3
+```
+
+:::
+::::::::::::::
+
+## Other tips
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+If you want to learn more about time series analysis in R, you can check out the following resources: 
+
+* The [CRAN Task View on Time Series Analysis](https://cran.r-project.org/web/views/TimeSeries.html) lists all the packages and core functions that you would need to know in order to do pretty much any sort of time series analysis, regression, etc. that you could think of. 
+* Also, this website seems like a good introduction to time series with R: [Little Book of R for Time Series](https://a-little-book-of-r-for-time-series.readthedocs.io/en/latest/). 
+
+*Side note*: There are [CRAN Task Views](https://cran.r-project.org/web/views/) for pretty much every statistical subject. In general, I find CRAN Task Views great if you already know what you are looking for; but, for beginners, the terminology is usually too detailed and confusing. 
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+If you want to learn more about time series analysis in Python, you can check out the following resources: 
+
+* [Time series analysis with Python](https://filippomb.github.io/python-time-series-handbook/notebooks/00/intro.html) from Filippo Maria Bianchi. 
+* [Time Series Analysis & Visualization in Python](https://www.geeksforgeeks.org/data-analysis/time-series-data-visualization-in-python/) from GeeksforGeeks. 
+* [Complete Guide on Time Series Analysis in Python](https://www.kaggle.com/code/prashant111/complete-guide-on-time-series-analysis-in-python/notebook) from Prashant Banerjee. 
+
+:::
+::::::::::::::
+
+-----
+
+## Review
+
+* Can you merge two data frames on a common column? 
+* Can you create and plot a univariate time series?  
+* Can you decompose a time series into seasonal, trend, and error components? 
+* Can you estimate a linear time series regression model? 
+
+**END**

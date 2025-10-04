@@ -1,0 +1,458 @@
+---
+title: "Linear regression outliers"
+author: "Patrick A. Singleton"
+format: 
+    html:
+        embed-resources: true
+engine: knitr
+knitr:
+  opts_knit:
+    root.dir: ".."
+---
+
+### Objectives & outcomes
+
+The objectives of this tutorial are to: 
+
+* Understand what outliers are. 
+* Learn about different outlier detection methods, statistics, and graphs. 
+* Consider various ways of dealing with potential outliers. 
+
+At the end of this tutorial, you should be able to: 
+
+* Identify potential outliers using: 
+    * Leverage
+    * Discrepancy (studentized residuals)
+    * Influence (DFBETAS, DFFITS, Cook's D)
+    * A combination of the above methods
+* Determine the appropriate remedy for outliers, depending upon your understanding of the dataset, data collection process, and analytic methods. 
+
+```{r}
+#| echo: false
+# some code to make the tutorial work
+library(reticulate)
+py_require("numpy")
+py_require("pandas")
+py_require("statsmodels")
+py_require("scipy")
+py_require("plotnine")
+```
+
+### Transportation dataset
+
+For this tutorial, we will use data from the *2019 Winter Transprotation Survey data* project. The data (*tbaqsurvey*) include responses from a 6-day travel diary survey of adult residents of Cache Valley, Utah, specifically several outcomes related to individual daily activity participation and travel behavior. You can access these data from the [Transportation datasets](https://github.com/singletonpa/usu-course-transport-data-research/blob/main/Data/Transportation_datasets.md) page on GitHub.
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Load data from GitHub
+tbaqsurvey <- read.csv(file=url("https://raw.githubusercontent.com/singletonpa/usu-course-transport-data-safety/main/Data/TB_AQ_survey/tbaqsurvey.csv", method="libcurl"))
+
+# Rename data frame
+mydf <- tbaqsurvey
+# str(tbaqsurvey)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python}
+# Load packages
+import pandas as pd
+import numpy as np
+
+# Changing setting until pandas 3.0
+pd.options.mode.copy_on_write = True
+
+# Load data from GitHub
+tbaqsurvey = pd.read_csv("https://raw.githubusercontent.com/singletonpa/usu-course-transport-data-research/main/Data/TB_AQ_survey/tbaqsurvey.csv")
+
+# Rename data frame
+mydf = tbaqsurvey
+# mydf.info()
+```
+
+:::
+::::::::::::::
+
+To start, let's create a linear regression model on this dataset. Instead of using factors, let's use dummy variables: 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Construct HHINC variables
+mydf$HHINC_Below <- ifelse(is.na(mydf$HHINC3), NA, ifelse(mydf$HHINC3 %in% c("Less than $35,000", "$35,000 to $74,999"), 1, 0))
+mydf$HHINC_Above <- ifelse(is.na(mydf$HHINC3), NA, ifelse(mydf$HHINC3=="$75,000 or more", 1, 0))
+mydf$HHINC_Unknown <- ifelse(is.na(mydf$HHINC3), NA, ifelse(mydf$HHINC3=="Unknown", 1, 0))
+
+# Linear regression model
+mymod1 <- lm(MODE_TOT ~ HHNPER + HHINC_Above + HHINC_Unknown, data=mydf)
+summary(mymod1)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python}
+# Construct HHINC variables
+mydf["HHINC_Below"] = np.where(mydf["HHINC3"].isna(), np.nan, 
+    np.where(mydf["HHINC3"].isin(["Less than $35,000","$35,000 to $74,999"]), 1, 0))
+mydf["HHINC_Above"] = np.where(mydf["HHINC3"].isna(), np.nan, 
+    np.where(mydf["HHINC3"]=="$75,000 or more", 1, 0))
+mydf["HHINC_Unknown"] = np.where(mydf["HHINC3"].isna(), np.nan, 
+    np.where(mydf["HHINC3"]=="Unknown", 1, 0))
+
+# Load packages
+import statsmodels.formula.api as smf
+
+# Linear regression model
+mymod1 = smf.ols("MODE_TOT ~ HHNPER + HHINC_Above + HHINC_Unknown", data=mydf).fit()
+mymod1.summary()
+```
+
+:::
+::::::::::::::
+
+## Outliers and influential observations in regression
+
+It is important to identify and address observations that may have a disproportionate impact on the linear regression model. If these observations do not belong (for one of several reasons), they will misrepresent the relationships being modeled and they should be removed. Influential observations are often termed _**outliers**_ because they fall outside the normal range of IVs $X$, DV $Y$, or residuals $\epsilon$, or because they have an outsized impact on predicted outcomes $\hat Y$ or parameters $\beta$. 
+
+First, we will discuss methods to identify or detect the presence of outliers. Then, we will discuss options for dealing with outliers. 
+
+### Detection
+
+There are three major types of detection methods that can help to identify outliers. The different methods look at different impacts that outliers might have, which (in some cases) tell us information about the type of outlier. 
+
+* **Leverage**: extreme values among set of independent variables
+* **Discrepancy**: large difference between predicted and observed values of dependent variable
+* **Influence**: large impact on estimated regression model parameters
+
+#### Leverage
+
+An observation has high **leverage ($h_{ii}$)** if it represents an extreme value (very far from the mean) of all independent variables in the model. For a model with one IV, leverage can be calculated as: 
+
+$$ h_{ii} = \frac {1} {n} + \frac {(X_i - \bar X)^2} {\sum (X_i - \bar X)^2} $$
+
+In for a general model with multiple IVs, matrix notation is used. Leverage values for each observation are given as the diagonals of the "hat" matrix $H = X (X^T X)^{-1} X^T$. 
+
+#### Discrepancy
+
+An observation has a high discrepancy if it has a large difference between the observed DV and the predicted DV; i.e., if the observation's residual is relatively large. The relative size of an observation's residual can be calculated by dividing each residual by an estimate of the standard deviation, yielding what is called a studentized residual. For outlier detection, externally **studentized residuals $t_{i(i)}$** are investigated: 
+
+$$ t_{i(i)} = \frac {\hat \epsilon_i} {\hat \sigma_{(i)} \sqrt {1 - h_{ii}}} $$
+
+where the estimated standard deviation $\hat \sigma_{(i)}$ is calculated without the observation's residual: 
+
+$$ \hat \sigma_{(i)} = \frac {1} {n-(K+1)} \sum_{j=1, j\ne i}^{n} {\hat \epsilon_j^2} $$
+
+Notice that the studentized residuals also depend upon the leverage $h_{ii}$. 
+
+#### Influence
+
+An observation has high influence if the regression model's predicted values or coefficients would change substantially if that observation were removed. There are three common measures of influence: **DFBETAS**, **DFFITS**, and **Cook's distance**. 
+
+For each observation and each coefficient in the model, **DFBETAS** provides the difference in the parameter estimate if that observation were removed from the model: 
+
+$$ DFBETA_{k, i} = \beta_k - \beta_{k,(i)} $$
+
+For each observation, **DFFITS** provides the difference in the predicted values of the DV (Studentized) if that observation were removed from the model: 
+
+$$ DFFITS_i = \frac {\hat Y_i - \hat Y_{i,(i)}} {s_{(i)} \sqrt {h_{ii}}} $$
+
+where $s_{(i)}$ is the standard error without the observation. 
+
+An equivalent measure to DFFITS is called **Cook's distance** or **Cook's D**. For each observation, Cook's D is a measure of the sum of all changes in the predicted values of the regression model if that observation were removed from the model: 
+
+$$ D_i = \frac {\sum_{j=1}^n (\hat Y_i - \hat Y_{i,(i)})^2} {s^2 p} = \frac {\hat \epsilon_i^2} {s^2 p} [\frac {h_{ii}} {(1-h_{ii})^2}] $$
+
+where $s^2$ is the mean square error of the model. 
+
+Notice that DFFITS and Cook's D also both depend upon the leverage $h_{ii}$. 
+
+#### Examples
+
+Don't worry, you don't have to code all of these outlier detection measures. We can use existing functions to do this for us. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+You can do this with other functions in R: `hatvalues()`, `rstudent()`, `dfbeta()`, and `cooks.distance()`. You can look at the largest values numerically or visually: 
+
+```{r}
+# Leverage (hat)
+mymod_lev <- hatvalues(mymod1)
+head(sort(mymod_lev, decreasing=T), n=10)
+plot(mymod_lev, pch=20, las=1, 
+     xlab="Observation", ylab="Leverage (h_ii)", 
+     main="Leverage (h_ii) of observations")
+
+# Discrepancy (studentized residuals)
+mymod_dis <- rstudent(mymod1)
+head(sort(abs(mymod_dis), decreasing=T), n=10)
+plot(mymod_dis, pch=20, las=1, 
+     xlab="Observation", ylab="Studentized residuals (t_i(i))", 
+     main="Studentized residuals (t_i(i)) of observations")
+
+# Influence (DFBETAS)
+mymod_inf1 <- dfbeta(mymod1)
+for (i in 1:ncol(mymod_inf1)) {
+  print(head(sort(abs(mymod_inf1[,i]), decreasing=T), n=10))
+  plot(mymod_inf1[,i], pch=20, las=1, 
+     xlab="Observation", ylab=paste("DFBETAS_", i, ",i", sep=""), 
+     main=paste("DFBETAS_", i, ",i", " of observations", sep=""))
+}
+
+# Influence (DFFITS)
+mymod_inf2 <- dffits(mymod1)
+head(sort(abs(mymod_inf2), decreasing=T), n=10)
+plot(mymod_inf2, pch=20, las=1, 
+     xlab="Observation", ylab="DFFITS_i", 
+     main="DFFITS_i of observations")
+
+# Influence (Cook's D)
+mymod_inf3 <- cooks.distance(mymod1)
+head(sort(mymod_inf3, decreasing=T), n=10)
+plot(mymod_inf3, pch=20, las=1, 
+     xlab="Observation", ylab="Cook's D_i", 
+     main="Cook's distance (D_i) of observations")
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+You can do this with other functions in Python: `get_influence()`, `outlier_test()`, and `OLSInfluence()`. You can look at the largest values numerically or visually: 
+
+```{python, warning=F}
+# Load packages
+import plotnine as p9
+from statsmodels.stats.outliers_influence import OLSInfluence
+
+# Get index
+temp = pd.DataFrame({"Index":mymod1.model.data.row_labels})
+
+# Leverage (hat)
+mymod1_lev = mymod1.get_influence().hat_matrix_diag
+mymod1_lev = pd.Series(mymod1_lev)
+mymod1_lev.index = temp["Index"]
+temp["Leverage"] = mymod1_lev
+temp["Leverage"].sort_values(ascending=False).head(10)
+(p9.ggplot(temp, p9.aes(x="Index", y="Leverage")) + 
+     p9.geom_point(size=2) + 
+     p9.labs(x="Observation", y="Leverage (h_ii)", 
+          title="Leverage (h_ii) of observations") + 
+     p9.theme_minimal()
+).show()
+del mymod1_lev
+
+# Discrepancy (studentized residuals)
+mymod1_dis = mymod1.outlier_test()['student_resid']
+temp["Discrepancy"] = mymod1_dis
+temp["Discrepancy"].sort_values(ascending=False).head(10)
+(p9.ggplot(temp, p9.aes(x="Index", y="Discrepancy")) + 
+     p9.geom_point(size=2) + 
+     p9.labs(x="Observation", y="Studentized residuals (t_i(i))", 
+          title="Studentized residuals (t_i(i)) of observations") + 
+     p9.theme_minimal()
+).show()
+del mymod1_dis
+
+# Influence (DFBETAS)
+mymod1_inf1 = OLSInfluence(mymod1).dfbetas
+mymod1_inf1 = pd.DataFrame(mymod1_inf1)
+mymod1_inf1.index = temp["Index"]
+mymod1_inf1["Index"] = mymod1_inf1.index
+for i in [0,1,2,3]:
+    print(mymod1_inf1[i].sort_values(ascending=False).head(10))
+    mymod1_inf1["Coef"] = mymod1_inf1[i]
+    (p9.ggplot(mymod1_inf1, p9.aes(x="Index", y="Coef")) + 
+     p9.geom_point(size=2) + 
+     p9.labs(x="Observation", y=f"DFBETAS_{i},i", 
+          title=f"DFBETAS_{i},i of observations") + 
+     p9.theme_minimal()
+    ).show()
+del i, mymod1_inf1
+
+# Influence (DFFITS)
+mymod1_inf2 = OLSInfluence(mymod1).dffits[0]
+temp["DFFITS"] = mymod1_inf2
+temp["DFFITS"].sort_values(ascending=False).head(10)
+(p9.ggplot(temp, p9.aes(x="Index", y="DFFITS")) + 
+     p9.geom_point(size=2) + 
+     p9.labs(x="Observation", y="DFFITS_i", 
+          title="DFFITS_i of observations") + 
+     p9.theme_minimal()
+).show()
+del mymod1_inf2
+
+# Influence (Cook's D)
+mymod1_inf3 = mymod1.get_influence().cooks_distance[0]
+mymod1_inf3 = pd.Series(mymod1_inf3)
+mymod1_inf3.index = temp["Index"]
+temp["Influence"] = mymod1_inf3
+temp["Influence"].sort_values(ascending=False).head(10)
+(p9.ggplot(temp, p9.aes(x="Index", y="Influence")) + 
+     p9.geom_point(size=2) + 
+     p9.labs(x="Observation", y="Cook's D_i", 
+          title="Cook's distance (D_i) of observations") + 
+     p9.theme_minimal()
+).show()
+del mymod1_inf3
+```
+
+:::
+::::::::::::::
+
+We can also examine these outlier detection values visually. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, the `influencePlot()` function from the `car` package plots each observation on a graph of leverage (hat values) vs. discrepancy (studentized residuals), with the size of the point reflecting its influence (Cook's distance). 
+
+```{r, message=F, warning=F}
+# install.packages("car")
+library("car")
+```
+
+```{r}
+# Summary outlier detection plot
+mymod_outs <- influencePlot(mymod1, main="Outlier detection plot")
+mymod_outs
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, the `influence_plot()` function plots each observation on a graph of leverage (hat values) vs. discrepancy (studentized residuals), with the size of the point reflecting its influence (Cook's distance). 
+
+```{python}
+# Load packages
+import statsmodels.api as sm
+
+# Summary outlier detection plot
+sm.graphics.influence_plot(mymod1)
+```
+
+:::
+::::::::::::::
+
+### Remedies
+
+Before determining remedies for dealing with outliers, we must first discuss the reasons why they may be caused. Statistically, some extreme observations would be expected due to random sampling, so we must consider this possibility. More fundamentally, outliers could be either **valid observations** or **observations with errors**. Let's consider the latter first. 
+
+Sometimes there are *errors* in the data. This is a common (if not frequent) occurrence that you will have to deal with. Error can be introduced into the dataset at any point in the process. 
+
+* There could be an error in the original data collection or measurement process, such as a sensor that malfunctions or a respondent selecting the wrong option. In this situation, there is not much that an analyst can do except to remove the erroneous observation, except make sure to collect more accurate data in the future. 
+* There could be an error in the data coding, especially when data are being converted in form (such as from paper to computer). For example, a coder might misinterpret a mark on a paper survey. In this situation, the analyst should try to go back to the original data source (if possible) and confirm that no transcription errors were made or fix any such errors. 
+* There could be an error in the data manipulation and calculation process; this would be caused by the analyst. These errors should be fixed by going through and double-checking all steps of the data preparation and analysis process. Including such checks along the way is usually helpful, as is having other analysts check your code and calculations. 
+
+Basically, if the error can be fixed, it should be. If the error cannot be fixed, the observation(s) should be removed from the dataset and the analysis. 
+
+Often, outliers are actually *valid observations* that do not contain any (identifiable) errors. These instances are more difficult to deal with. 
+
+* It could be that your assumed relationship/theory/hypothesis is wrong, and (thus) that your model is misspecified. This could be due to not including all of the relevant factors (missing variables), there being a non-linearity that you are not accounting for, or that the entire model form is wrong (e.g., linear regression is the wrong approach). In these situations, you will need to take a step back and reconsider your entire analysis approach. 
+* It could also be that the data are valid and the model is valid, but it is being applied to the wrong data. In this case, your outliers may belong to a fundamentally different group or because the relationship you are modeling doesn't hold for those observations or that group. In these situations, you may be right to remove these outliers, thus narrowing your focus on a more consistent behavior or phenomena, but you must clearly justify why you are doing so. 
+
+Ultimately, your remedy for outliers depends upon your understanding of the dataset, data collection methods, the data manipulation and calculation process, and the underlying phenomenon you are trying to analyze. It is usually better to fix the data (or your theory/model) rather than removing observations, but this may not always be possible. 
+
+#### Examples
+
+Recall our outlier detection statistics and plots. It appears we may have `r nrow(mymod_outs)` outliers, based measures of leverage, discrepancy, and influence. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Identify potential outliers in model
+mymod1$model[row.names(mymod_outs),]
+
+# Inspect potential outliers in original dataset
+# mydf[row.names(mymod_outs),]
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python}
+# Inspect potential outliers in original dataset
+tcol = [mymod1.model.endog_names] + mymod1.model.exog_names
+tcol.remove('Intercept')
+mydf.loc[[502,730,732,892,1566], tcol]
+del tcol
+```
+
+:::
+::::::::::::::
+
+For some reason, these observations appear to be significantly different and influential. Perhaps some of the data may be wrong or contain errors for these observations. Let's remove them and re-estimate the model. Then, let's compare our new model (without outliers) with our original model estimation results. 
+
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Remove outliers
+mydf2 <- mydf[!(row.names(mydf) %in% row.names(mymod_outs)),]
+
+# Re-estimate model
+# mymod3 <- lm(MODE_TOT ~ HHNPER + HHINC_Above + HHINC_Unknown, data=mydf2)
+mymod3 <- update(mymod1, data=mydf2)
+
+# Compare models
+summary(mymod1)
+summary(mymod3)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python}
+# Remove outliers
+mydf2 = mydf.drop([502,730,732,892,1566])
+
+# Re-estimate model
+# mymod3 = smf.ols("MODE_TOT ~ HHNPER + HHINC_Above + HHINC_Unknown", data=mydf2).fit()
+mymod3 = smf.ols(mymod1.model.formula, data=mydf2).fit()
+
+# Compare models
+mymod1.summary()
+mymod3.summary()
+```
+
+:::
+::::::::::::::
+
+Notice what happened to the model goodness-of-fit by removing only `r nrow(mymod_outs)` observations. What does that mean about the fit of these observations to the rest of the dataset? 
+
+Whether or not removing these observations was the correct approach depends upon your understanding of the dataset, the data collection process, and the underlying phenomenon you are trying to measure. In this case, these observations seem like valid (if somewhat extreme) cases and don't seem to fall into a separate population group. (For instance, maybe I made a mistake in data assembly or when calculating these measures, or perhaps the original data I obtained was incorrect in some way.) The best approach would likely be to see if these observations can be fixed, such as by returning to the original data figuring out what went wrong. Only as a last resort should these observations be removed from the final model. 
+
+## Review
+
+* Can you Identify potential outliers using: 
+    - Leverage? 
+    - Discrepancy (studentized residuals)? 
+    - Influence (DFBETAS, DFFITS, Cook's D)? 
+    - A combination of the above methods? 
+* Can you determine the appropriate remedy for outliers, depending upon your understanding of the dataset, data collection process, and analytic methods? 
+
+**END**

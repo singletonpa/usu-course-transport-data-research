@@ -1,0 +1,989 @@
+---
+title: "Inferential statistics"
+author: "Patrick A. Singleton"
+format: 
+    html:
+        embed-resources: true
+engine: knitr
+knitr:
+  opts_knit:
+    root.dir: ".."
+---
+
+### Objectives & outcomes
+
+The objectives of this tutorial are to: 
+
+* Understand hypothesis testing fundamentals, including null/alternative hypotheses and Type I/II errors. 
+* Learn how to formulate, calculate, and evaluate hypothesis tests and confidence intervals for...
+    * A single population mean. 
+    * A single population variance. 
+    * A single population proportion. 
+* Learn how to formulate, calculate, and evaluate hypothesis tests and confidence intervals for...
+    * The difference between two means of independent samples. 
+    * The difference between two means of paired samples. 
+    * The difference between two variances. 
+    * The difference between two proportions. 
+* Learn how to formulate, calculate, and evaluate a chi-square goodness-of-fit test. 
+
+At the end of this tutorial, you should be able to: 
+
+* Aggregate a dataset by some variable. 
+* Write null and alternative hypotheses. 
+* Calculate various hypothesis test statistics ($Z$, $t$, $F$, $\chi^2$) and confidence intervals. 
+* Evaluate the results of hypothesis testing. 
+
+```{r}
+#| echo: false
+# some code to make the tutorial work
+library(reticulate)
+py_require("numpy")
+py_require("pandas")
+py_require("scipy")
+py_require("statsmodels")
+py_require("matplotlib")
+py_require("seaborn")
+py_require("plotnine")
+```
+
+### Transportation dataset
+
+For this tutorial, we will use data from the *Logan non-motorized trail count data* project. The datasets include information on daily counts of non-motorized (walking and bicycling) traffic at two locations: along the Boulevard Trail in Logan (*Boulevard*), and along a trail in Green Canyon (*GreenCanyon*). There are also weather (*Weather*) and air quality (*AirQuality*) data for the same dates. You can access these data from the [Transportation datasets](https://github.com/singletonpa/usu-course-transport-data-research/blob/main/Data/Transportation_datasets.md) page on GitHub. 
+
+Let's prepare the data just like we did for the last tutorial. Remember how to load data from online, merge/join datasets together, convert text to date, extract information, and format categorical variables. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+```{r}
+# Load data from GitHub
+Boulevard <- read.csv(file=url("https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Logan_trail_counts/Boulevard.csv", method="libcurl"))
+GreenCanyon <- read.csv(file=url("https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Logan_trail_counts/GreenCanyon.csv", method="libcurl"))
+Weather <- read.csv(file=url("https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Logan_trail_counts/Weather.csv", method="libcurl"))
+AirQuality <- read.csv(file=url("https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Logan_trail_counts/AirQuality.csv", method="libcurl"))
+
+# Rename columns
+names(Boulevard) <- c("Date", "CountBL")
+names(GreenCanyon) <- c("Date", "CountGC")
+
+# Merging data together using common column "Date"
+dat <- merge(Boulevard, GreenCanyon, by="Date", all.x=T, all.y=T)
+dat <- merge(dat, Weather, by="Date", all.x=T, all.y=T)
+dat <- merge(dat, AirQuality, by="Date", all.x=T, all.y=T)
+
+# Format date
+dat$Date <- as.Date(dat$Date, format="%Y-%m-%d")
+
+# Extract other info from date
+dat$Year <- strftime(dat$Date, format="%Y")
+dat$Month <- strftime(dat$Date, format="%m")
+dat$Weekday <- strftime(dat$Date, format="%a")
+
+# Convert text to factor
+dat$Year <- factor(dat$Year, levels=c("2018", "2019"))
+dat$Month <- factor(dat$Month, levels=c("01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"), 
+    labels=c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))
+dat$Weekday <- factor(dat$Weekday, levels=c("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"))
+
+# Inspect
+str(dat)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python}
+# Load modules
+import pandas as pd
+import numpy as np
+
+# Changing setting until pandas 3.0
+pd.options.mode.copy_on_write = True
+
+# Load data from GitHub
+Boulevard = pd.read_csv("https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Logan_trail_counts/Boulevard.csv")
+GreenCanyon = pd.read_csv("https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Logan_trail_counts/GreenCanyon.csv")
+Weather = pd.read_csv("https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Logan_trail_counts/Weather.csv")
+AirQuality = pd.read_csv("https://raw.github.com/singletonpa/usu-course-transport-data-safety/main/Data/Logan_trail_counts/AirQuality.csv")
+
+# Rename columns
+Boulevard.rename(columns={'Count':'CountBL'}, inplace=True)
+GreenCanyon.rename(columns={'Count':'CountGC'}, inplace=True)
+
+# Merging data together using common column 'Date'
+dat = pd.merge(Boulevard, GreenCanyon, on='Date', how='outer')
+dat = pd.merge(dat, Weather, on='Date', how='outer')
+dat = pd.merge(dat, AirQuality, on='Date', how='outer')
+
+# Format date
+dat['Date'] = pd.to_datetime(dat['Date'], format='%Y-%m-%d')
+
+# Extract other info from date
+dat['Year'] = dat['Date'].dt.strftime('%Y')
+dat['Month'] = dat['Date'].dt.strftime('%b')
+dat['Weekday'] = dat['Date'].dt.strftime('%a')
+
+# Convert text to factor
+dat['Year'] = dat['Year'].astype('category')
+month_labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+                "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+dat['Month'] = pd.Categorical(dat['Month'], categories=month_labels)
+weekday_labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+dat['Weekday'] = pd.Categorical(dat['Weekday'], categories=weekday_labels)
+del month_labels, weekday_labels
+
+# Inspect
+dat.info()
+```
+
+:::
+::::::::::::::
+
+## Data processing
+
+### Aggregation
+
+Before we start our analysis, let us inspect the average daily counts for different weekdays or months. To do this, we must first calculate the average daily count for each weekday, month, or season. This is called *aggregation*, because we are converting data stored at the day level (each row represents one day) to a higher level of temporal aggregation, where each row will represent a weekday, month, or season. (You can also aggregate other, non-time units, such as by geography or by person-household, for instance.) 
+
+In aggregation, we need to decide a few things: (a) the *grouping units* (already discussed); (b) the *variables* being aggregated (what info we want for the higher units); and (c) the *function* that does the calculations when aggregating. In this case, we want the average (the *mean* function) of the counts/volumes (the *variables*). In other cases, other functions might apply: maximum, minimum, count, or something else. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, we aggregate using the `aggregate()` function in R. As `?aggregate` tells you, this function "Splits the data into subsets, computes summary statistics for each, and returns the result in a convenient form." You need to specify what you want to summarize (`x=`), how you want to split up the data (`by=`), and what statistics you want to calculate (`FUN=`, could be `sum`, `mean`, or really any other function). The `by` parameter is the trickiest: you say `by=list(mydf$grouping)` where `mydf` is your data frame and `grouping` is the variable you want to group by. 
+
+Alternatively, you can use the "formula" notation (`x~grouping`), by specifying the desired variable to summarize, the grouping variable, the dataset, and the function. I find this to be a more intuitive way to do it, but sometimes it can yield different results if you have missing data (e.g., no rows for particular dates). (If you have missing data as `NA`, you must specify `na.rm=T` at the end, which is passed to the function.)
+
+```{r}
+# Aggregate and calculate mean of daily counts by month
+temp <- aggregate(dat$CountBL, by=list(dat$Month), FUN=mean)
+temp
+temp <- aggregate(CountBL~Month, data=dat, FUN=mean)
+temp
+rm(temp)
+
+# Aggregate and calculate mean of daily counts by month
+temp <- aggregate(cbind(CountBL, CountGC) ~  Month, data=dat, FUN=mean)
+temp
+```
+
+Recall, we can easily visualize these results, e.g., using a bar chart (of the means). 
+
+```{r}
+# Load package
+library("ggplot2")
+library("RColorBrewer")
+
+# Bar plots showing average of daily counts by month
+ggplot(data=temp, mapping=aes(x=Month, y=CountBL)) +
+  geom_bar(stat="identity", fill=brewer.pal(12, "Paired")) +
+  labs(x="Month", y="Average daily volume",
+    title="Average daily Boulevard Trail use by month") + 
+  theme_minimal()
+ggplot(data=temp, mapping=aes(x=Month, y=CountGC)) +
+  geom_bar(stat="identity", fill=brewer.pal(12, "Paired")) +
+  labs(x="Month", y="Average daily volume",
+    title="Average daily Green Canyon use by month") + 
+  theme_minimal()
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+```{python}
+# Aggregate and calculate mean of daily counts by month
+temp = dat.groupby("Month")["CountBL"].agg("mean")
+temp = temp.to_frame()
+temp["Month"] = temp.index
+temp
+del temp
+
+# Aggregate and calculate mean of daily counts by month
+temp = dat.groupby("Month")[["CountBL", "CountGC"]].agg("mean")
+temp["Month"] = temp.index
+temp
+```
+
+Recall, we can easily visualize these results, e.g., using a bar chart (of the means). 
+
+```{python}
+# Load packages
+import matplotlib.pyplot as plt
+import seaborn as sns
+import plotnine as p9
+
+# Bar plots showing average of daily counts by month
+plot = (p9.ggplot(data=temp, mapping=p9.aes(x="Month", y="CountBL")) + 
+    p9.geom_bar(stat="identity", fill=sns.color_palette("Paired", 12)) + 
+    p9.labs(x="Month", y="Average daily volume",
+      title="Average daily Boulevard Trail use by month") + 
+    p9.theme_minimal())
+plot.show()
+plot = (p9.ggplot(data=temp, mapping=p9.aes(x="Month", y="CountGC")) + 
+    p9.geom_bar(stat="identity", fill=sns.color_palette("Paired", 12)) + 
+    p9.labs(x="Month", y="Average daily volume",
+      title="Average daily Green Canyon use by month") + 
+    p9.theme_minimal())
+plot.show()
+```
+
+:::
+::::::::::::::
+
+## Hypothesis testing
+
+In general, a hypothesis is a supposition (guess) or proposed explanation for a phenomenon; in the scientific method, a hypothesis must also be testable. 
+
+Statistically, one outcome of a hypothesis test is **the probability of observing some data** (obtained from a sample of a population) **given that** (or conditional upon) **a (null) hypothesis is true**. In other words, if we assume some hypothesis is true, what is the probability that the data we observe are consistent with that hypothesis? We can represent these statements in the following way: 
+
+$$ P(data | hypothesis = T)$$
+
+Note what a hypothesis test *doesn't* tell us: the probability of the hypothesis being true. Thus, we can only make conclusions about the consistency of the data with the hypothesis. If, however, the probability we get is very low, we can conclude that data appear to be inconsistent with the hypothesis, thus casting doubt upon it. 
+
+To obtain this probability, we first calculate a test statistic about the hypothesis in question. Based on assumptions about the data (or its sample size), we then compare these test statistics against parametric distributions, such as the $Z$, $t$, $F$, and $\chi^2$ distributions. In the process of this comparison, we obtain a probability (or p-value) based on where the test statistic falls on the relevant probability distribution. 
+
+### Null and alternative hypotheses
+
+Formally, we actually must have two hypothesis, a **null hypothesis $H_0$**, and an **alternative hypothesis $H_a$**. Usually, $H_0$ is the hypothesis we are testing, and $H_a$ considers all other situations. For instance: 
+
+* $H_0:$ The average USU student is 22 years old. Or: $H_0: \mu_{age}=22$
+* $H_a:$ The average USU student is not 22 years old. Or: $H_a: \mu_{age}\ne22$
+
+In general, we perform a hypothesis test to determine whether to reject or fail to reject the null hypothesis, based on the probability that the data are consistent with it. (Based on the definition above, we cannot "accept" the null hypothesis.) Scientists tend be conservative with our assessments and conclusions, so we tend to require a very small probability before feeling comfortable rejecting the null hypothesis. In other words, we need a high bar (or a high level of confidence) before we feel comfortable saying that the data are not consistent with the null hypothesis. 
+
+### Type I and type II errors
+
+With all of this, we are trying to minimize what is known as **Type I error (or $\alpha$): the probability of rejecting the null hypothesis when it is actually true**. It is good to minimize Type I errors, because we don't want to make the wrong conclusion! A typical choice of $\alpha$ (or significance level) is 0.05, although, there are situations in which we may want to use 0.01 or 0.10 instead. 
+
+Another type of error that we haven't discussed is **Type II error (or $\beta$): the probability of failing to reject the null hypothesis when it is actually false**. We also want to minimize Type II errors, because we don't want to come to the wrong conclusion in the other direction either. (You may have heard about the "power" of a hypothesis test. This power is the probability of correctly rejecting the null hypothesis, and is calculated as $1-\beta$.)
+
+The problem is that as we decrease $\alpha$, $\beta$ increases. Thus, we must be careful not to use too small an $\alpha$, unless the cost of a Type I error is very much higher than the cost of a Type II error (e.g., when lives are at stake). 
+
+### Confidence intervals
+
+The above discussion about hypothesis testing centered around a test that results in a decision to **either reject or fail to reject some null hypothesis**. We pose some hypothetical value for a statistic (e.g., the mean), do some calculations, and get a single number back (a probability). This tells us something about our specific hypothesis. But what if we want to look at a different hypothesis, or a range of hypotheses? 
+
+An alternative approach is to use **confidence intervals** around the sample statistic of interest. Here, we first decide some significance level ($\alpha$) that we are comfortable with, then we do some calculations and get a range of numbers. We have some level of confidence ($1-\alpha$) that the true population statistic would within the confidence interval. If we use $\alpha=0.05$, we can say that, if we repeated the sampling enough times, the true population value will fall within the confidence intervals we calculate around 95% of the time. We cannot necessarily say that this particular confidence interval contains the true population value with any level of confidence. (This is a confusing concept; see [Wikipedia](https://en.wikipedia.org/wiki/Confidence_interval#Meaning_and_interpretation) for details.) 
+
+We can still do hypothesis "checks" with confidence intervals. If our hypothesized value falls within the confidence interval, we would have concluded that we cannot reject the null hypothesis. If our hypothesis value falls outside of the confidence interval, we would have rejected the null hypothesis with that level of confidence. 
+
+## Inferences and confidence intervals for a single population mean
+
+Often, we are interested in examining questions related to the *central tendency* of a population, comparing the mean $\mu$ of a single sample to some null hypothesis value $\mu^\prime$. Our null and alternative hypotheses (for a two-tailed test) for a single population mean $\mu$ are: 
+
+$$ H_0: \mu = \mu^\prime $$
+$$ H_a: \mu \neq \mu^\prime $$
+
+### ...with known variance
+
+Given a sample of length $n$ with mean $\bar X$, the test statistic $Z^*$ for a single population mean $\mu$ with known variance $\sigma^2$ is: 
+
+$$ Z^* = \frac {\bar X - \mu^\prime } {\sigma / \sqrt n} $$
+
+which follows the *standard [normal $Z$ distribution](https://en.wikipedia.org/wiki/Normal_distribution)*. The corresponding confidence interval is: 
+
+$$ \bar X \pm Z_{\alpha / 2} \frac {\sigma} {\sqrt {n}} $$
+
+where $Z_{a/2}$ is the value of the standard normal $Z$ distribution. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+There is no base R function to perform a $Z$ test, so let's create our own. We also then have to calculate the relevant p-value and confidence interval using the `pnorm()` and `qnorm()` functions. For an example, we will look at the hypothesis that average daily trail count in Spring (March, April, May) was equal to 200. First, we need to subset our daily dataset so that it only includes data from those months. 
+
+```{r}
+# Extract daily data for Spring
+myse <- dat[dat$Month %in% c("Mar", "Apr", "May"),]
+summary(myse$CountBL)
+
+# Function to perform z-test
+z.test = function(x, mu=0, pci=0.05) {
+  # z test statistic
+  myz <- (mean(x) - mu) / sqrt(var(x) / length(x))
+  # p-value
+  myp <- 2*pnorm(abs(myz), lower.tail=F)
+  # mean
+  mymean <- mean(x)
+  # confidence interval
+  myci <- vector(mode="numeric", length=2)
+  myci[1] <- mean(x) - qnorm(pci/2, lower.tail=F) * sd(x) / sqrt(length(x))
+  myci[2] <- mean(x) + qnorm(pci/2, lower.tail=F) * sd(x) / sqrt(length(x))
+  # construct list for return
+  mylist <- list(z=myz, p=myp, mean=mymean, ci=myci, mu=mu)
+  return(mylist)
+}
+
+# Use function to perform z-test
+myz <- z.test(myse$CountBL, mu=200, pci=0.05)
+myz
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, we can also write our own function to do this. Or, we can use the `ztest()` function from `statsmodules.stats.weightstats`. For an example, we will look at the hypothesis that average daily trail count in Spring (March, April, May) was equal to 200. First, we need to subset our daily dataset so that it only includes data from those months. 
+
+```{python}
+# Load packages
+import scipy.stats as stats
+from statsmodels.stats.weightstats import ztest
+
+# Extract daily data for Spring
+myse = dat[dat["Month"].isin(["Mar", "Apr", "May"])]
+myse["CountBL"].describe()
+
+# Function to perform z-test
+def z_test(x, mu=0, pci=0.05):
+    x = np.array(x)
+    # z test statistic
+    myz = (np.mean(x) - mu) / np.sqrt(np.var(x, ddof=1) / len(x))
+    # p-value
+    myp = 2 * stats.norm.sf(np.abs(myz))
+    # mean
+    mymean = np.mean(x)
+    # confidence interval
+    z_crit = stats.norm.ppf(1 - pci / 2)
+    margin_error = z_crit * np.std(x, ddof=1) / np.sqrt(len(x))
+    myci = [mymean - margin_error, mymean + margin_error]
+    # construct dictionary for return
+    result = {'z': myz, 'p': myp, 'mean': mymean, 'ci': myci, 'mu': mu}
+    return result
+
+# Use function to perform z-test
+myz = z_test(myse["CountBL"], mu=200, pci=0.05)
+myz['z']
+myz['p']
+myz['ci']
+```
+
+:::
+::::::::::::::
+
+What does this tell us? What does the test statistic (`r round(myz$z,2)`) mean? What does the p-value (`r round(myz$p,2)`) mean? How does the confidence interval (`r round(myz$ci,1)`) relate to our null hypothesis (`r round(myz$mu,1)`)? 
+
+### ... with unknown variance
+
+The formulas above assume that the population variance is known, thus allowing the use of the standard normal ($Z$) distribution. In most real-world situations, the population variance will be unknown, so we must use the *Student's [$t$ distribution](https://en.wikipedia.org/wiki/Student%27s_t-distribution) instead*. (Note that the distributions are very similar in shape: the $t$ distribution converges on the $Z$ distribution as $n$ approaches infinity, so if you have a large sample the results should be nearly identical.)
+
+Given a sample of length $n$ with mean $\bar X$ and variance $s^2$, the test statistic $t^*$ for a single population mean $\mu$ is: 
+
+$$ t^* = \frac {\bar X - \mu^\prime } {s / \sqrt n} $$
+
+which follows the Student's $t$ distribution with $n-1$ degrees of freedom (df). The corresponding confidence interval is: 
+
+$$ \bar X \pm t_{\alpha / 2} \frac {s} {\sqrt {n}} $$
+
+where $t_{a/2}$ is the value of the Student's $t$ distribution with $df=n-1$. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+Luckily, R does have a built-in `t.test()` function, so we can use that. Let's test the same null hypothesis. 
+
+```{r}
+# t-test, p-value, confidence interval
+myt <- t.test(myse$CountBL, mu=200)
+myt
+```
+
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+Luckily, Python does have a built-in `ttest_1samp()` function, so we can use that. Let's test the same null hypothesis. 
+
+```{python}
+# t-test, p-value, confidence interval
+myt = stats.ttest_1samp(myse["CountBL"], popmean=200)
+myt.statistic
+myt.pvalue
+```
+
+:::
+::::::::::::::
+
+What does this tell us? What does the test statistic (`r round(myt$statistic,2)`) mean? What does the p-value (`r round(myt$p.value,2)`) mean? How does the confidence interval (`r round(myt$conf.int,1)`) relate to our null hypothesis (`r round(myt$null.value,1)`)? How is this different from our z-test result? 
+
+## Inferences and confidence intervals for a population variance
+
+Occasionally, we may also be interested in examining questions related to the *dispersion* of a population value, comparing the variance $\sigma^2$ of a single sample to some null hypothesis value $(\sigma^\prime)^2$. Our null and alternative hypotheses (for a two-tailed test) for a population variance $\sigma^2$ are: 
+
+$$ H_0: \sigma^2 = (\sigma^\prime)^2 $$
+$$ H_a: \sigma^2 \neq (\sigma^\prime)^2 $$
+
+Given a sample of length $n$ with variance $s^2$, the test statistic $X^2$ for a single population variance $\sigma^2$ is: 
+
+$$ X^2 = \frac {(n-1) s^2} {(\sigma^\prime)^2} $$
+
+which follows the [$\chi^2$ distribution](https://en.wikipedia.org/wiki/Chi-square_distribution) with $df=n-1$. The corresponding confidence interval is: 
+
+$$ [ \frac {(n-1) s^2} {\chi^2_{a/2}} , \frac {(n-1) s^2} {\chi^2_{1-a/2}} ] $$
+
+where $\chi^2_{a/2}$ and $\chi^2_{1-a/2}$ are the values of the $\chi^2$ distribution with $df=n-1$. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+Again, there is no base R function to perform a single variance test, so we must create one to calculate the test statistic, and then calculate the relevant p-value and confidence interval. We will look at the hypothesis that the standard deviation of daily trail counts in Spring was equal to half the mean.  
+
+```{r}
+# Variance and standard deviation
+var(myse$CountBL) # sample variance
+(0.5*mean(myse$CountBL))^2 # null hypothesis variance
+sd(myse$CountBL) # sample standard deviation
+0.5*mean(myse$CountBL) # null hypothesis standard deviation
+
+# Function to perform test of a single variance
+var1.test <- function(x, vtest=1, pci=0.05, ntail=2) {
+  # variance
+  myvar <- var(x)
+  # degrees of freedom
+  mydf <- length(x) - 1
+  # chi-square test statistic
+  mychi2 <- (mydf * myvar) / vtest
+  # p-value
+  if (ntail==1) {
+    myp <- min((1 - pchisq(mychi2, df=mydf, lower.tail=F)), pchisq(mychi2, df=mydf, lower.tail=F))
+  } else if (ntail==2) {
+    myp <- 2 * min((1 - pchisq(mychi2, df=mydf, lower.tail=F)), pchisq(mychi2, df=mydf, lower.tail=F))
+  }
+  # confidence interval
+  myci <- vector(mode="numeric", length=2)
+  myci[1] <- (mydf * myvar) / qchisq(pci/2, df=mydf, lower.tail=F)
+  myci[2] <- (mydf * myvar) / qchisq((1-pci/2), df=mydf, lower.tail=F)
+  # construct list for return
+  mylist <- list(x2=mychi2, p=myp, df=mydf, var=myvar, ci=myci, vtest=vtest)
+  return(mylist)
+}
+
+# Use function to perform chi-square test
+myv <- var1.test(myse$CountBL, vtest=(0.5*mean(myse$CountBL))^2, pci=0.05)
+myv
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+Again, there is no base Python function to perform a single variance test, so we must create one to calculate the test statistic, and then calculate the relevant p-value and confidence interval. We will look at the hypothesis that the standard deviation of daily trail counts in Spring was equal to half the mean.  
+
+```{python}
+# Variance and standard deviation
+myse["CountBL"].var() # sample variance
+(0.5 * myse["CountBL"].mean()) ** 2 # null hypothesis variance
+myse["CountBL"].std() # sample standard deviation
+0.5 * myse["CountBL"].mean() # null hypothesis standard deviation
+
+# Function to perform test of a single variance
+def var1_test(x, vtest=1, pci=0.05, ntail=2):
+  # variance
+  myvar = np.var(x, ddof=1)
+  # degrees of freedom
+  mydf = len(x) - 1
+  # chi-square test statistic
+  mychi2 = (mydf * myvar) / vtest
+  # p-value
+  if ntail==1: 
+    myp = min((1 - stats.chi2.cdf(mychi2, df=mydf)), stats.chi2.cdf(mychi2, df=mydf))
+  elif ntail==2:
+    myp = 2 * min((1 - stats.chi2.cdf(mychi2, df=mydf)), stats.chi2.cdf(mychi2, df=mydf))
+  # confidence interval
+  lower = (mydf * myvar) / stats.chi2.ppf((pci / 2), df=mydf)
+  upper = (mydf * myvar) / stats.chi2.ppf((1 - pci / 2), df=mydf)
+  myci = [lower, upper]
+  # construct list for return
+  mylist = {'x2':mychi2, 'p':myp, 'df':mydf, 'var':myvar, 'ci':myci, 'vtest':vtest}
+  return mylist
+
+# Use function to perform chi-square test
+myv = var1_test(myse["CountBL"], vtest=((0.5 * myse["CountBL"].mean()) ** 2), pci=0.05)
+myv['x2']
+myv['p']
+myv['ci']
+```
+
+:::
+::::::::::::::
+
+What does this tell us? What does the test statistic (`r round(myv$x2,2)`) mean? What does the p-value (`r round(myv$p,2)`) mean? How does the confidence interval (`r round(myv$ci,1)`) relate to our null hypothesis (`r round(myv$vtest,1)`)? 
+
+## Inferences and confidence intervals for a population proportion
+
+Often, the data we are interested in are categorical, not continuous. Thus, we cannot test a mean; we can only compare a sample proportion $p$ to some null hypothesis proportion $p^\prime$. Our null and alternative hypotheses (for a two-tailed test) of a population proportion $p$ are: 
+
+$$ H_0: p = p^\prime $$
+$$ H_a: p \neq p^\prime $$
+
+Given a sample of length $n$ with a proportion of "successes" $\hat p$, the test statistic $Z^*$ for a population proportion $p$ is: 
+
+$$ Z^* = \frac {p^\prime - \hat p} {\sqrt {\hat p (1-\hat p) / n}} $$
+
+which follows the standard [normal $Z$ distribution](https://en.wikipedia.org/wiki/Normal_distribution). The corresponding confidence interval is: 
+
+$$ \hat p \pm Z_{\alpha/2} {\sqrt {\hat p (1-\hat p) / n}} $$
+
+where $Z_{\alpha/2}$ follows the standard normal $Z$ distribution. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+R has a built-in function called `prop.test()`. You must specify the number of "successes" and the total number of "trials", the proportion of which is what we want to test. Let's test the hypothesis that 50% of the days in the Spring saw trail volumes greater than 200. First, we need to construct a binary/dummy variable (T/F, 1/0) to represent this. 
+
+```{r}
+# Construct dummy variable
+myse$CountBL_200UP <- ifelse(myse$CountBL > 200, T, F)
+table(myse$CountBL_200UP)
+
+# proportion test, p-value, confidence interval
+myprop <- prop.test(x=sum(myse$CountBL_200UP), n=length(myse$CountBL_200UP), p=0.50, correct=F)
+myprop
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+Python has the function `proportions_ztest()` from `statsmodels.stats.proportion`. You must specify the number of "successes" and the total number of "trials", the proportion of which is what we want to test. Let's test the hypothesis that 50% of the days in the Spring saw trail volumes greater than 200. First, we need to construct a binary/dummy variable (T/F, 1/0) to represent this. 
+
+```{python}
+# Load packages
+from statsmodels.stats import proportion
+
+# Construct dummy variable
+myse["CountBL_200UP"] = np.where(myse["CountBL"] > 200, True, False)
+myse["CountBL_200UP"].value_counts()
+
+# proportion test, p-value, confidence interval
+myprop = proportion.proportions_ztest(count=myse["CountBL_200UP"].sum(), nobs=myse["CountBL_200UP"].size, value=0.50)
+myprop[0]
+myprop[1]
+```
+
+:::
+::::::::::::::
+
+What does this tell us? What does the test statistic (`r round(myprop$statistic,2)`) mean? What does the p-value (`r round(myprop$p.value,2)`) mean? How does the confidence interval (`r round(myprop$conf.int,1)`) relate to our null hypothesis (`r round(myprop$null.value,1)`)? 
+
+## Inferences regarding two population variances
+
+Before considering questions regarding differences between the means of two samples, it may be useful to first consider whether the two underlying populations have similar variances. Our null and alternative hypotheses (for a two-tailed test) for the equivalence of two population variances are: 
+
+$$ H_0: \sigma_1^2 = \sigma_2^2 $$
+$$ H_a: \sigma_1^2 \neq \sigma_2^2 $$
+
+Given two samples of lengths $n_1$ and $n_2$ with variances $s_1^2$ and $s_2$, the test statistic $F^*$ for the equivalence of two population variances $\sigma_1^2$ and $\sigma_2^2$ is: 
+
+$$ F^*_{(n_1-1, n_2-1)} = \frac {max(s_1^2, s_2^2)} {min(s_1^2, s_2^2)} $$
+
+which follows the [$F$ distribution](https://en.wikipedia.org/wiki/F-distribution) with $n_1-1$ and $n_2-1$ degrees of freedom. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+We can use R's built in `var.test()` function. Let's examine the null hypothesis that the variance of daily trail counts on the Boulevard Trail was equal in Spring and in Summer. We first must subset the data for these two seasons. 
+
+```{r}
+# Subset data for seasons
+myse1 <- dat[dat$Month %in% c("Mar", "Apr", "May"),]
+myse2 <- dat[dat$Month %in% c("Jun", "Jul", "Aug"),]
+var(myse1$CountBL, na.rm=T)
+var(myse2$CountBL, na.rm=T)
+
+# Test comparing two variances
+myvar <- var.test(myse1$CountBL, myse2$CountBL, ratio=1)
+myvar
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, we can use the `bartlett()` function. Let's examine the null hypothesis that the variance of daily trail counts on the Boulevard Trail was equal in Spring and in Summer. We first must subset the data for these two seasons. 
+
+```{python}
+# Subset data for seasons
+myse1 = dat[dat["Month"].isin(["Mar", "Apr", "May"])]
+myse2 = dat[dat["Month"].isin(["Jun", "Jul", "Aug"])]
+myse1["CountBL"].var()
+myse2["CountBL"].var()
+
+# Test comparing two variances
+myvar = stats.bartlett(myse1["CountBL"], myse2["CountBL"])
+myvar[0]
+myvar[1]
+```
+
+:::
+::::::::::::::
+
+What does this tell us? What does the test statistic (`r round(myvar$statistic,2)`) mean? What does the p-value (`r round(myvar$p.value,2)`) mean? How does the confidence interval (`r round(myvar$conf.int,1)`) relate to our null hypothesis (`r round(myvar$null.value,1)`)? 
+
+## Inferences regarding two population means with independent samples
+
+We often are interested in comparing the means of two independent samples. For example, we may want to see if the daily trail count in Spring and in Summer were equal. In general, we want to examine hypotheses that involve the difference between two population means. (In the earlier example, the difference we are testing for is zero.) Our null and alternative hypotheses (for a two-tailed test) for the difference between two means from independent samples are: 
+
+$$ H_0: \mu_1 - \mu_2 = \mu_{diff}^\prime $$
+$$ H_a: \mu_1 - \mu_2 \neq \mu_{diff}^\prime $$
+
+### ...with equal variances
+
+The equations used depend upon whether the variances of the two populations are equal. In the simpler case, let's assume we have found (or know) them to be equal. 
+
+First, let us consider the case that we have large samples. What is considered "large" depends, but it is generally when we have more than 20-30 cases or observations. In these cases, the [central limit theorem](https://en.wikipedia.org/wiki/Central_limit_theorem) suggests that the difference between two means (regardless of the underlying population distribution) will be approximately normally distributed. Thus, given two independent samples of lengths $n_1$ and $n_2$ with means $\bar X_1$ and $\bar X_2$ and variances $s^2_1$ and $s^2_2$, the test statistic $Z^*$ for the difference between two population means $\mu_1$ and $\mu_2$ and equal variances $\sigma_1^2 = \sigma_2^2$ is: 
+
+$$ Z^* = \frac {(\bar X_1 - \bar X_2) - \mu_{diff}^\prime } {\sqrt {s_p^2 (1/{n_1} + 1/{n_2})}} $$
+
+which follows the standard [normal $Z$ distribution](https://en.wikipedia.org/wiki/Normal_distribution). The corresponding confidence interval is: 
+
+$$ [ (\bar X_1 - \bar X_2) - \mu_{diff}^\prime ] \pm Z_{\alpha/2} {\sqrt { s_p^2 (\frac {1} {n_1} + \frac {1} {n_2})}} $$
+
+where $Z_{a/2}$ is the value of the standard normal $Z$ distribution. 
+
+If, instead, we have small samples (less than 20-30), or if we just want to be slightly conservative, we can instead use the Student's $t$ distribution. Thus, given two independent samples of lengths $n_1$ and $n_2$ with means $\bar X_1$ and $\bar X_2$ and variances $s^2_1$ and $s^2_2$, the test statistic $Z^*$ for the difference between two population means $\mu_1$ and $\mu_2$ and equal variances $\sigma_1^2 = \sigma_2^2$ is: 
+
+$$ t^* = \frac {(\bar X_1 - \bar X_2) - \mu_{diff}^\prime } {\sqrt {s_p^2 (1/{n_1} + 1/{n_2})}} $$
+
+which follows the [Student's $t$ distribution](https://en.wikipedia.org/wiki/Student%27s_t-distribution) with $df = n_1 + n_2 - 2$. The corresponding confidence interval is: 
+
+$$ [ (\bar X_1 - \bar X_2) - \mu_{diff}^\prime ] \pm t_{\alpha/2} {\sqrt { s_p^2 (\frac {1} {n_1} + \frac {1} {n_2})}} $$
+
+where $t_{a/2}$ is the value of the Student's $t$ distribution with $df = n_1 + n_2 - 2$. 
+
+The above equations use a pooled variance measure: 
+
+$$ s_p^2 = \frac {(n_1 - 1) s_1^2 + (n_2 - 1) s_2^2} {n_1 + n_2 - 2} $$
+
+### ...with unequal variances
+
+Alternatively, we may have two samples that come with populations whose variances are not equal. Here, we do not use the pooled variance, but our degrees-of-freedom calculation is more complex. 
+
+If we have large samples, given two independent samples of lengths $n_1$ and $n_2$ with means $\bar X_1$ and $\bar X_2$ and variances $s^2_1$ and $s^2_2$, the test statistic $Z^*$ for the difference between two population means $\mu_1$ and $\mu_2$ and unequal variances $\sigma_1^2$ and $\sigma_2^2$ is: 
+
+$$ Z^* = \frac {(\bar X_1 - \bar X_2) - \mu_{diff}^\prime } {\sqrt {{s_1^2}/{n_1} + {s_2^2}/{n_2}}} $$
+
+which follows the standard [normal $Z$ distribution](https://en.wikipedia.org/wiki/Normal_distribution). The corresponding confidence interval is: 
+
+$$ [ (\bar X_1 - \bar X_2) - \mu_{diff}^\prime ] \pm Z_{\alpha/2}  {\sqrt {\frac {s_1^2} {n_1} + \frac {s_2^2} {n_2}}} $$
+
+where $Z_{a/2}$ is the value of the standard normal $Z$ distribution. 
+
+If we have small samples, given two independent samples of lengths $n_1$ and $n_2$ with means $\bar X_1$ and $\bar X_2$ and variances $s^2_1$ and $s^2_2$, the test statistic $Z^*$ for the difference between two population means $\mu_1$ and $\mu_2$ and unequal variances $\sigma_1^2$ and $\sigma_2^2$ is: 
+
+$$ t^* = \frac {(\bar X_1 - \bar X_2) - \mu_{diff}^\prime } {\sqrt {{s_1^2}/{n_1} + {s_2^2}/{n_2}}} $$
+
+which follows the [Student's $t$ distribution](https://en.wikipedia.org/wiki/Student%27s_t-distribution) with $df$ defined below. The corresponding confidence interval is: 
+
+$$ [ (\bar X_1 - \bar X_2) - \mu_{diff}^\prime ] \pm t_{\alpha/2} {\sqrt {\frac {s_1^2} {n_1} + \frac {s_2^2} {n_2}}} $$
+
+where $t_{a/2}$ is the value of the Student's $t$ distribution with $df$ defined below. 
+
+The equations above use a pooled measure of degrees of freedom: 
+
+$$ df=\frac {(s_1^2/n_1 + s_2^2/n_2)^2} {\frac {(s_1^2/n_1)^2} {n_1-1} + \frac {(s_2^2/n_2)^2} {n_2-1}} $$ 
+
+Luckily, you don't have to memorize how to calculate each of these equations, because you can use functions in R or Python. (However, you should understand that there are different equations depending upon the equality of variances and the sample size.) 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, we can utilize the same `t.test()` function to perform a two-sample t-test about differences in means. Let's test the null hypothesis that the average daily trail count in Spring was the same as in Summer. Recall that our variance test found that the variances were significantly different, so we could specify that using the `var.equal=F` parameter (this is also a reasonably conservative assumption). 
+
+```{r}
+# Means
+mean(myse1$CountBL)
+mean(myse2$CountBL)
+
+# Test comparing two means, independent samples
+myt2 <- t.test(myse1$CountBL, myse2$CountBL, mu=0, var.equal=F)
+myt2
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, we can utilize the `ttest_ind()` function to perform a two-sample t-test about differences in means. Let's test the null hypothesis that the average daily trail count in Spring was the same as in Summer. Recall that our variance test found that the variances were significantly different, so we could specify that using the `equal_var=False` parameter (this is also a reasonably conservative assumption). 
+
+```{python}
+# Means
+myse1["CountBL"].mean()
+myse2["CountBL"].mean()
+
+# Test comparing two means, independent samples
+myt2 = stats.ttest_ind(myse1["CountBL"], myse2["CountBL"], equal_var=False)
+myt2.statistic
+myt2.pvalue
+```
+
+:::
+::::::::::::::
+
+What does this tell us? What does the test statistic (`r round(myt2$statistic,2)`) mean? What does the p-value (`r round(myt2$p.value,2)`) mean? How does the confidence interval (`r round(myt2$conf.int,1)`) relate to our null hypothesis (`r round(myt2$null.value,1)`)? 
+
+## Inferences regarding two population means with paired samples
+
+Sometimes our two samples will have some sort of parity (or 1:1 linkage), instead of being completely independent. Examples of paired samples include: trail counts for two different nearby locations during the same hours or days; traffic counts at one location in the northbound and southbound directions; asking someone to rate their satisfaction with bicycling and taking transit to campus; etc. Using this sort of "matched pairs" experimental design can be very useful, because we can remove some of the uncertainties in response that are common to the two pairs. In the first example, using paired samples helps us remove variability due to time of day, weather, etc., focusing on variability due to the two different locations alone. 
+
+If we have paired samples, we first calculate the difference between observations $x_d = x_1 - x_2$. Then, our null and alternative hypotheses (for a two-tailed test) for the difference between two means from paired samples are: 
+
+$$ H_0: \mu_d = \mu_d^\prime $$
+$$ H_a: \mu_d \neq \mu_d^\prime $$
+
+Given a sample of length $n_d$ with mean $\bar X_d$ and variance $s_d^2$, the test statistic $t^*$ for a single population mean $\mu_d$ is: 
+
+$$ t^* = \frac {\bar X_d - \mu_d\prime } {s_d / \sqrt n_d} $$
+
+which follows the [Student's $t$ distribution](https://en.wikipedia.org/wiki/Student%27s_t-distribution) with $n_d-1$ degrees of freedom (df). The corresponding confidence interval is: 
+
+$$ \bar X_d \pm t_{\alpha / 2} \frac {s_d} {\sqrt {n_d}} $$
+
+where $t_{a/2}$ is the value of the Student's $t$ distribution with $df=n_d-1$. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, the `t.test()` function can also accommodate paired samples, we add the parameter `paired=T`. Let's compare the equivalency of daily counts in Summer at our two count locations. 
+
+```{r}
+# Variances
+var(myse2$CountBL)
+var(myse2$CountGC)
+
+# Means
+mean(myse2$CountBL)
+mean(myse2$CountGC)
+mean(myse2$CountBL) - mean(myse2$CountGC)
+
+# Test comparing two means, paired samples
+myt2p <- t.test(myse2$CountBL, myse2$CountGC, mu=0, var.equal=F, paired=T)
+myt2p
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, the `ttest_rel()` function handles paired samples. Let's compare the equivalency of daily counts in Summer at our two count locations. 
+
+```{python}
+# Variances
+myse2["CountBL"].var()
+myse2["CountGC"].var()
+
+# Means
+myse2["CountBL"].mean()
+myse2["CountGC"].mean()
+myse2["CountBL"].mean() - myse2["CountGC"].mean()
+
+# Test comparing two means, paired samples
+myt2p = stats.ttest_rel(myse2["CountBL"], myse2["CountGC"])
+myt2p.statistic
+myt2p.pvalue
+```
+
+:::
+::::::::::::::
+
+What does this tell us? What does the test statistic (`r round(myt2p$statistic,2)`) mean? What does the p-value (`r round(myt2p$p.value,2)`) mean? How does the confidence interval (`r round(myt2p$conf.int,1)`) relate to our null hypothesis (`r round(myt2p$null.value,1)`)? 
+
+## Inferences regarding two population proportions
+
+Again, if we have categorical data, we can test the equivalence (technically, the difference) of two proportions. Our null and alternative hypotheses (for a two-tailed test) for the difference between two proportions are: 
+
+$$ H_0: p_1 - p_2 = p_{diff}^\prime $$
+$$ H_a: p_1 - p_2 \neq p_{diff}^\prime $$
+
+Given two samples of lengths $n_1$ and $n_2$ with proportions of "successes" $\hat p_1$ and $\hat p_2$, the test statistic $Z^*$ for the difference between two population proportions $p_1$ and $p_2$ is: 
+
+$$ Z^* = \frac {(\hat p_1 - \hat p_2) - p_{diff}^\prime} {\sqrt {{\frac {\hat p_1 (1-\hat p_1)}{n_1}} + \frac {\hat p_2 (1-\hat p_2)}{n_2}}} $$
+
+which follows the standard [normal $Z$ distribution](https://en.wikipedia.org/wiki/Normal_distribution). The corresponding confidence interval is: 
+
+$$ [(\hat p_1 - \hat p_2) - p_{diff}^\prime] \pm Z_{\alpha/2} \sqrt {{\frac {\hat p_1 (1-\hat p_1)}{n_1}} + \frac {\hat p_2 (1-\hat p_2)}{n_2}} $$
+
+where $Z_{\alpha/2}$ follows the standard normal $Z$ distribution. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+Again, in R, the `prop.test()` function can perform a two-sample test of proportions. Let's test the hypothesis that the share of days in May with trail volumes greater than 200 is more than the share of days in April. 
+
+```{r}
+# Subset data for both seasons
+myse3 <- myse[myse$Month %in% c("Apr", "May"),]
+myse3$Month <- droplevels(myse3$Month)
+
+# Create table
+mytab <- table(myse3$Month, myse3$CountBL_200UP)
+myptab <- proportions(mytab, margin=1)
+myptab
+
+# Test comparing two proportions
+myprop2 <- prop.test(mytab, correct=F)
+myprop2
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+Again, in Python, the `proportions_ztest()` function can perform a two-sample test of proportions. Let's test the hypothesis that the share of days in the Spring with trail volumes greater than 200 is more than the share of days in the Summer. First, we need to construct a binary/dummy variable (T/F, 1/0) to represent this. 
+
+```{python}
+# Subset data for both seasons
+myse3 = myse[myse["Month"].isin(["Apr", "May"])]
+myse3['Month'] = myse3['Month'].cat.remove_unused_categories()
+
+# Create table
+mytab = pd.crosstab(myse3['Month'], myse3['CountBL_200UP'])
+myptab = mytab.div(mytab.sum(axis=1), axis=0)
+myptab
+
+# Test comparing two proportions
+n_successes = [mytab.loc["Apr",True], mytab.loc["May",True]]
+n_trials = [mytab.loc["Apr"].sum(), mytab.loc["May"].sum()]
+myprop2 = proportion.proportions_ztest(count=n_successes, nobs=n_trials)
+myprop2[0]
+myprop2[1]
+```
+
+:::
+::::::::::::::
+
+What does this tell us? What does the test statistic (`r round(myprop2$statistic,2)`) mean? What does the p-value (`r round(myprop2$p.value,2)`) mean? How does the confidence interval (`r round(myprop2$conf.int,1)`) relate to our null hypothesis (`r 0.0`)? 
+
+## Chi-squared goodness-of-fit test
+
+The previous test works if we are interested in comparing the proportions of two categorical data sources. But that works only for two categories ("success" vs. "failure"). What if we have multiple categories? We can do a similar test of multiple categories using Pearson's chi-squared test. 
+
+Basically, the chi-squared test compares observed counts or frequencies to what would be expected under a null hypothesis of a set of equal proportions. In the general condition, for $k$ groupings: 
+
+$$ X^2 = \sum^k_{i=1} \frac {(O_i - E_i)^2} {E_i} $$
+
+which follows the [$\chi^2$ distribution](https://en.wikipedia.org/wiki/Chi-square_distribution) with $df=k-1$. 
+
+In many cases, we are interested in comparing the composition of two groups, or assessing the association between two categorical variables. (These questions are equivalent if one of our categorical variables consists of the grouping variable.) For a two-way contingency table with $r$ rows and $c$ columns, where $E_ij = R_i C_j / n$ (our null hypothesis is that cell values are proportional to the row and column totals, thus that there is no association between the two categorical variables): 
+
+$$ X^2 = \sum^r_{i=1} \sum^c_{j=1} \frac {(O_{ij} - E_{ij})^2} {E_{ij}} $$
+
+which follows the $\chi^2$ distribution with $df=(r-1)(c-1)$. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, we can use the built-in function `chisq.test()`, which takes as input a contingency table (a two-dimensional table). 
+
+```{r}
+# Frequency table
+mytab
+
+# Test comparing contingency table
+mychi <- chisq.test(mytab, correct=F)
+mychi
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, we can use the function `chi2_contingency()`, which takes as input a contingency table (a two-dimensional table). 
+
+```{python}
+# Frequency table
+mytab
+
+# Test comparing contingency table
+mychi = stats.chi2_contingency(mytab, correction=False)
+mychi.statistic
+mychi.pvalue
+```
+
+:::
+::::::::::::::
+
+What does this tell us? What does the test statistic (`r round(mychi$statistic,2)`) mean? What does the p-value (`r round(mychi$p.value,2)`) mean? 
+
+## Other tips
+
+### Extracting information from hypothesis tests
+
+The results of each of the hypothesis tests usually provide more information that is printed in the output. If you save the outputs (as shown in the examples above), you can then call the different results for use in other analyses. 
+
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+For example, let's look at what the chi-squared test produced: 
+
+```{r}
+str(mychi)
+```
+
+Not only did it yield the test statistic, p-value, and df, but it calculated other attributes as well: observed and expected cell frequencies, residuals (the difference), and standardized residuals. (Notice, it is an object of type "List".) You can retrieve any of these using the `$` notation: 
+
+```{r}
+mychi$observed
+mychi$expected
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+For example, let's look at what the chi-squared test produced: 
+
+```{python}
+mychi
+```
+
+Not only did it yield the test statistic, p-value, and df, but it calculated expected cell frequenciesas well. You can retrieve any of these: 
+
+```{python}
+mytab
+mychi.expected_freq
+```
+
+:::
+::::::::::::::
+
+## Review
+
+* Can you formulate, calculate, and evaluate a hypothesis test and confidence interval for a single population mean? 
+* Can you formulate, calculate, and evaluate a hypothesis test and confidence interval for a single population variance? 
+* Can you formulate, calculate, and evaluate a hypothesis test and confidence interval for a single population proportion? 
+* Can you formulate, calculate, and evaluate a hypothesis test and confidence interval for...
+    * The difference between two means of independent samples? 
+    * The difference between two means of paired samples? 
+    * The difference between two variances? 
+    * The difference between two proportions? 
+* Can you formulate, calculate, and evaluate a chi-square goodness-of-fit test? 
+
+**END**

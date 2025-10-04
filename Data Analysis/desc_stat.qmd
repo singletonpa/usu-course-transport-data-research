@@ -1,0 +1,703 @@
+---
+title: "Descriptive statistics"
+author: "Patrick A. Singleton"
+format: 
+    html:
+        embed-resources: true
+engine: knitr
+knitr:
+  opts_knit:
+    root.dir: ".."
+---
+
+### Objectives & outcomes
+
+The objectives of this tutorial are to: 
+
+* Load data into R or Python. 
+* Understand basic descriptive statistics of a single variable. 
+* Calculate descriptive statistics by writing code and by calling functions. 
+* Write a basic function. 
+* Learn about basic measures of association between two variables. 
+* Calculate measures of association by writing code and by calling functions. 
+
+At the end of this tutorial, you should be able to: 
+
+* Load a CSV file into R or Python. 
+* Identify and explain the meaning of measures of centrality (or central tendency), dispersion (or variability), and the shape of the distribution of a variable. 
+* Calculate the mean, median, mode, range, variance, standard deviation, coefficient of variation, skewness, and kurtosis of a variable. 
+* Identify and explain the meaning of measures of association between two variables. 
+* Calculate the correlation and covariance between two continuous variables. 
+
+```{r}
+#| echo: false
+# some code to make the tutorial work
+library(reticulate)
+py_require("numpy")
+py_require("pandas")
+py_require("scipy")
+```
+
+### Transportation dataset
+
+For this tutorial, we will use data from the *Investigating bicyclist safety perceptions and behaviors at roundabouts* project. The data (*dat3*) include survey responses about bicyclists' personal characteristics, user behaviors, perceptions of comfort, and preferences for various design and operational elements of roundabouts. You can access these data from the [Transportation datasets](https://github.com/singletonpa/usu-course-transport-data-research/blob/main/Data/Transportation_datasets.md) page on GitHub.
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+Once downloaded, to load a CSV file in R, use the `read.csv()` function. Note the relative path from your working directory to the file's location, and be sure to include forward slashes `/`. (If copying a file path from Windows Explorer, which uses back slashes `\`, you will have to manually edit them.) An alternative way to specify the file's location is to use the `file.path()` function, which requires you to enter each of the folders, but you don't need to worry about the slashes. 
+
+```{r}
+# object_name <- read.csv(file=file.path("top folder/next folder/another folder/file_name.csv"))
+# object_name <- read.csv(file=file.path("top folder", "next folder", "another folder", "file_name.csv"))
+
+# Load bicycle roundabout data
+# bikeround <- read.csv(file="Data/dat3.csv")
+bikeround <- read.csv(file=file.path("Data", "dat3.csv"))
+
+# Inspect dataset
+# str(bikeround, list.len=ncol(bikeround))
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+Once downloaded, to load a CSV file in Python, use the `read_csv()` function from the `pandas` module. Note the relative path from your working directory to the file's location, and be sure to include forward slashes `/`. (If copying a file path from Windows Explorer, which uses back slashes `\`, you will have to manually edit them.) An alternative way to specify the file's location is to use the `path.join()` function from the `os` module, which requires you to pass a list of each of the folders, but you don't need to worry about the slashes. 
+
+```{python}
+# Load modules
+import numpy as np
+import pandas as pd
+import os
+
+# object_name <- pd.read_csv("top folder/next folder/another folder/file_name.rds")
+# object_name <- pd.read_csv(os.path.join(*["top folder", "next folder", "another folder", "file_name.rds"]))
+
+# Load bicycle roundabout data
+# bikeround = pd.read_csv("Data/dat3.csv")
+bikeround = pd.read_csv(os.path.join(*["Data", "dat3.csv"]))
+
+# Inspect dataset
+# bikeround.dtypes
+```
+
+:::
+::::::::::::::
+
+## Measures of centrality or central tendency
+
+These descriptive statistics -- **the mean, median, and mode** -- measure aspects about *the centrality or central tendency of a variable*. They attempt to represent average, middle, or common values for a particular variable. 
+
+### Mean
+
+The arithmetic **mean** (commonly, "average") is a common measure of central tendency. For a random variable *X* with *n* observations (e.g., we have a sample), the mean can be expressed as: 
+
+$$ mean(X) = \bar X = \frac {\sum_{i=1}^{n} x_{i}} {n} $$
+
+The mean has many desirable properties for statistical inference and modeling (discussed in a later tutorial). 
+
+### Median
+
+The **median** is the value of a variable that lies directly in the middle. For an odd number of numerically-ordered variables, the median is the middle value. For an even number, the median is the mean of the middle two values. 
+
+One benefit of the median over the mean is that it is resistant to outliers. 
+
+### Mode
+
+The **mode** of a non-continuous variable is the most commonly observed value. Unlike the mean and median, this means that the mode is the most likely (from a probabilistic sense) outcome from a sample. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, you can use the following functions: 
+
+* *Mean*: `mean()`
+    * or calculate it from `sum()` and `length()`
+* *Median*: `median()`
+
+For instance, let's describe the central tendency of the variable `HELMET`: the self-reported percentage of the time that people wear a helmet while bicycling. 
+
+```{r}
+# Calculate mean
+# sum(bikeround$HELMET) / length(bikeround$HELMET)
+mean(bikeround$HELMET)
+
+# Calculate median
+median(bikeround$HELMET)
+```
+
+What's wrong? There are *missing data* in the `HELMET` column. By default, R doesn't ignore these `NA` values when doing most calculations. You need to tell it to ignore them, using the `na.rm` argument. 
+
+```{r}
+# Calculate mean
+# sum(bikeround$HELMET, na.rm=T) / sum(!is.na(bikeround$HELMET))
+mean(bikeround$HELMET, na.rm=T)
+
+# Calculate median
+median(bikeround$HELMET, na.rm=T)
+```
+
+There is no built-in function to calculate the *mode*, so you could create your own. 
+
+```{r}
+# Function to calculate the (statistical) mode of a variable
+mymode <- function(x) {
+  ux <- unique(x)
+  tb <- tabulate(match(x, ux))
+  md <- ux[which.max(tb)]
+  return(md)
+}
+
+# Calculate mode
+mymode(bikeround$HELMET)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, you can use the following functions from the `statistics` module: 
+
+* *Mean*: `mean()`
+* *Median*: `median()`
+* *Mode*: `mode()`
+
+For instance, let's describe the central tendency of the variable `HELMET`: the self-reported percentage of the time that people wear a helmet while bicycling. 
+
+```{python}
+# Load modules
+import statistics
+
+# Calculate mean
+statistics.mean(bikeround["HELMET"])
+
+# Calculate median
+statistics.median(bikeround["HELMET"])
+
+# Calculate mode
+statistics.mode(bikeround["HELMET"])
+```
+
+What's wrong? There are *missing data* in the `HELMET` column. By default, Python doesn't ignore these `NaN` values when doing most calculations. There are some alternative functions from `numpy` that ignore `nan` values: `nanmean()` and `nanmedian()`. 
+
+```{python}
+# Calculate mean
+np.nanmean(bikeround["HELMET"])
+
+# Calculate median
+np.nanmedian(bikeround["HELMET"])
+```
+
+:::
+::::::::::::::
+
+## Measures of dispersion or variability
+
+These descriptive statistics -- **the range, variance, standard deviation, and coefficient of variation** -- measure aspects about *the dispersion or variability of a variable*. They attempt to represent the spread of observations of around a measure of central tendency (like the median or mean). 
+
+### Range
+
+The **range** of a variable is the distance between the minimum and maximum values of that variable. 
+
+$$  range(x) = max(x) - min(x) $$
+
+### Interquartile range
+
+A variation on the range is called the **interquartile range (IQR)**. Quartiles are the values that split the data into four equally-sized groups: first (or lower), second (or median), and third (or upper) quartiles. You can also think of them as percentiles: the 25th, 50th, and 75th percentile values. The IQR is the distance between the first and third quartiles of a variable. 
+
+$$  IQR(x) = Q_{3}(x) - Q_{1}(x) $$
+
+One benefit of the IQR over the range is that it (like the median) is more robust to the presence of outliers. Also, it is a measure of the variability of a variable around the median. 
+
+### Variance
+
+In contrast, the **variance** is a measure of variability of a variable around the mean (which it includes). The variance is the average squared deviation of individual observations from the mean. In a sampling context (i.e, where population data are unavailable), this can be mathematically expressed as: 
+
+$$ Var(X) = s^{2} = \frac {\sum_{i=1}^{n} (x_{i} - \bar X)^{2}} {n - 1} $$
+
+Note that variance is in the units of the square of the original units of the variable. (Note also that we are dividing by $n-1$ rather than $n$, because we are calculating the sample variance as an unbiased estimator of the unknown population variance. See [Bessel's correction](https://en.wikipedia.org/wiki/Bessel%27s_correction) for more information.)
+
+### Standard deviation
+
+The **standard deviation** is simply the square root of the variance. 
+
+$$ SD(X) = s = \sqrt \frac {\sum_{i=1}^{n} (x_{i} - \bar X)^{2}} {n - 1} $$
+
+It is often more easily interpreted than the variance because it is expressed in the original units of a variable. Thus, it plays and important role in inferential statistics. 
+
+### Coefficient of variation
+
+The **coefficient of variation** takes the abstraction one step further than the standard deviation, by removing all units. It accomplishes this by dividing the standard deviation by the mean: 
+
+$$ CV(X) = \frac {s} {\bar X} $$
+
+Thus, the coefficient of variation is used as a relative measure of dispersion across variables with different measurement scales. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, you can use the following functions: 
+
+* *Range*: `range()`
+    * or both `min()` and `max()`
+* *Interquartile range*: `IQR()`
+    * or calculate it from `quantile()`
+* *Variance*: `var()`
+    * or calculate it
+* *Standard deviation*: `sd()`
+    * or calculate it with `var()` and `sqrt()`
+
+Let's describe the dispersion or variability of the variable *SEATBELT*: the self-reported percentage of the time that people wear a seatbelt while driving. 
+
+```{r}
+# Range
+# min(bikeround$SEATBELT, na.rm=T)
+# max(bikeround$SEATBELT, na.rm=T)
+range(bikeround$SEATBELT, na.rm=T)
+
+# Interquartile range
+# quantile(bikeround$SEATBELT, na.rm=T)
+IQR(bikeround$SEATBELT, na.rm=T)
+
+# Variance
+var(bikeround$SEATBELT, na.rm=T)
+
+# Standard deviation
+# sqrt(var(bikeround$SEATBELT, na.rm=T))
+sd(bikeround$SEATBELT, na.rm=T)
+```
+
+There is no base function in R for *coefficient of variation*, although you can easily calculate it from `sd()` and `mean()`. Instead, let's use this as an opportunity to write a *function*. 
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, you can use the following functions: 
+
+* *Range*: use both `min()` and `max()`
+* *Interquartile range*: `iqr()` from the `scipy.stats` module
+    * or calculate it using `percentile()` from the `numpy` module
+* *Variance*: `.var()` method from the `pandas` module
+    * or `variance()` from the `statistics` module
+    * or `var(, ddof=1)` from the `numpy` module
+* *Standard deviation*: `.std()` method from the `pandas` module
+    * or `stdev()` from the `statistics` module
+    * or `std(, ddof=1)` from the `numpy` module
+
+Let's describe the dispersion or variability of the variable *SEATBELT*: the self-reported percentage of the time that people wear a seatbelt while driving. 
+
+```{python}
+from scipy import stats
+
+# Range
+min(bikeround["SEATBELT"])
+max(bikeround["SEATBELT"])
+
+# Interquartile range
+stats.iqr(bikeround["SEATBELT"], nan_policy='omit')
+
+# Variance
+bikeround["SEATBELT"].var()
+
+# Standard deviation
+bikeround["SEATBELT"].std()
+```
+
+There is no base function in R for *coefficient of variation*, although you can easily calculate it from `.std()` and `mean()`. Instead, let's use this as an opportunity to write a *function*. 
+
+:::
+::::::::::::::
+
+### Writing a function
+
+This is a good point to start learning about functions. (You've been using many different functions already!) A function takes some general input(s) in a certain format, does some calculations (runs code), and then (optionally) returns one output. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, start with a name for the function (something specific, and not in use by any other function) and assign it the function `function()`. Inside the parenthesis are the inputs, which can be a list of the names of input objects you want to use within the function. Then, inside curly brackets `{}`, you write all the code to do stuff with those inputs. (You can and should create new objects too, but these will only be accessible within the function.) As a last line, you put the object you want to output within the `return()` function. 
+
+```{r}
+#| eval: false
+# Function to do something
+myfun <- function(x, input2, third) {
+  
+  # insert code here
+  
+  return(something)
+}
+```
+
+For example, here is the simple code for standard deviation, `sd()`. 
+
+```{r}
+sd
+```
+
+Notice that there are two inputs (`x` and `na.rm`) and one line of code, taking the square root of the variance (resulting from a call to the `var()` function.) Since there is one line of code, the function assumes that this is the result that should be returned (no need for `return()`.) 
+
+When writing functions, I often start with writing code for the specific case outside of the function. Once I get that to work (and the code to run), I then make the situation more generic and put it within the function. 
+
+For example, let's work to calculate the coefficient of variation. 
+
+```{r}
+# Coefficient of variation
+mycol <- bikeround$SEATBELT
+mysd <- sd(mycol, na.rm=T)
+mymean <- mean(mycol, na.rm=T)
+mycov <- mysd/mymean
+mycov
+```
+
+Now I will make it more generic by putting it inside a function. 
+
+```{r}
+# Function to calculate the coefficient of variation
+cv <- function(x) {
+  mysd <- sd(x, na.rm=T)
+  mymean <- mean(x, na.rm=T)
+  mycov <- mysd/mymean
+  return(mycov)
+}
+# test
+cv(bikeround$SEATBELT)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, start with a name for the function (something specific, and not in use by any other function) and put it after `def` and before `():`. Inside the parenthesis are the inputs, which can be a list of the names of input objects you want to use within the function. Then, on the indented lines after the colon `:`, you write all the code to do stuff with those inputs. (You can and should create new objects too, but these will only be accessible within the function.) As a last line, you put the object you want to output after `return`. 
+
+```{python}
+#| eval: false
+# Function to do something
+def myfun(x, input2, third):
+
+  # insert code here
+
+  return something
+```
+
+When writing functions, I often start with writing code for the specific case outside of the function. Once I get that to work (and the code to run), I then make the situation more generic and put it within the function. 
+
+For example, let's work to calculate the coefficient of variation. 
+
+```{python}
+# Coefficient of variation
+mycol = bikeround["SEATBELT"]
+mysd = mycol.std()
+mymean = np.nanmean(mycol)
+mycov = mysd / mymean
+mycov
+```
+
+Now I will make it more generic by putting it inside a function. 
+
+```{python}
+# Function to calculate the coefficient of variation
+def cv(x):
+  mysd = x.std()
+  mymean = np.nanmean(x)
+  mycov = mysd / mymean
+  return mycov
+# test
+cv(bikeround["SEATBELT"])
+```
+
+:::
+::::::::::::::
+
+## Measures of the shape of the distribution
+
+These descriptive statistics -- **the skewness and kurtosis** -- measure aspects about *the shape of the distribution of a variable*. These are less commonly discussed, in part because they are more difficult to understand and interpret. It is often easiest to visualize skewness and kurtosis using figures of distributions (or histograms). Sometimes they are described as the third and fourth *moments* along with the mean (first) and variance (second). You can read more about moments [here](https://en.wikipedia.org/wiki/Moment_(mathematics)). 
+
+### Skewness
+
+**Skewness** refers to asymmetry: the degree to which a distribution appears to be shifted off-center (picture a bell curve). However, don't think about which way the mass of the distribution is leaning; think instead about which way the distribution is being pulled by its tail. 
+
+* A right or positively skewed distribution is one that has a larger right tail; it is being pulled to the right (or positive) direction. 
+* A left or negatively skewed distribution is one that has a larger left tail; it is being pulled to the left (or negative) direction. 
+
+See [these](https://en.wikipedia.org/wiki/Skewness#Introduction) [resources](https://brownmath.com/stat/shape.htm) for examples. 
+
+Skewness can be mathematically calculated (for a sample) using the following equation: 
+
+$$ skewness(x) = g_{1} = (\frac {\sum_{i=1}^{n} (x_{i} - \bar X)^{3}} {n}) \div (\frac {\sum_{i=1}^{n} (x_{i} - \bar X)^{2}} {n})^\frac {3}{2} $$
+
+### Kurtosis
+
+**Kurtosis** refers to the flatness or peakedness of a distribution (again, picture it compared to a bell curve). A regular amount of kurtosis has a value of 3. (Sometimes this is shifted by 3 to have a center at 0, and called **excess kurtosis**.)
+
+* Leptokurtic distributions have a kurtosis greater than 3, and appear to be more peaked, with longer tails on either end. 
+* Platykurtic distributions have a kurtosis less than 3, and appear to be more flat or bunched, 
+
+See [these](https://en.wikipedia.org/wiki/Kurtosis#Graphical_examples) [resources](https://brownmath.com/stat/shape.htm) for examples. 
+
+Kurtosis can be mathematically calculated (for a sample) using the following equation: 
+
+$$ kurtosis(x) = g_{2} =  (\frac {\sum_{i=1}^{n} (x_{i} - \bar X)^{4}} {n}) \div ({\frac {\sum_{i=1}^{n} (x_{i} - \bar X)^{2}} {n}})^{2} $$
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+R doesn't come with default functions to calculate skewness and kurtosis. Instead, you must download and install the *moments* package. In the console, type `install.packages("moments")`. Once installed, you have to load it into this session. Add `library("moments")` to your script or type it in the console. Now, you can use the following functions: 
+
+* Skewness: `skewness()` from the `moments` package
+* Kurtosis: `kurtosis()` from the `moments` package
+
+```{r}
+# Load packages
+# install.packages("moments") # run just once on computer
+library("moments") # run every time you first run a script
+
+# Skewness
+skewness(bikeround$SEATBELT, na.rm=T)
+
+# Kurtosis
+kurtosis(bikeround$SEATBELT, na.rm=T)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+Python doesn't come with default functions to calculate skewness and kurtosis, but the `scipy.stats` module does. You've already seen how to install this module (terminal: `pip install scipy`) and load it into this session (script/console: `from scipy import stats`). Now, you can use the following functions: 
+
+* Skewness: `skew()` from the `scipy.stats` module
+* Kurtosis: `kurtosis()` from the `moments` package
+
+```{python}
+# Load modules
+# from scipy import stats
+
+# Skewness
+stats.skew(bikeround["SEATBELT"], nan_policy='omit')
+
+# Kurtosis
+stats.kurtosis(bikeround["SEATBELT"], nan_policy='omit')
+```
+
+:::
+::::::::::::::
+
+## Other tips
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+### Summary
+
+In R, the `summary()` function returns several descriptive statistics of interest: mean, median, and quartiles. It is particularly useful for summarizing multiple variables in a data frame. 
+
+```{r}
+summary(bikeround[,c("HELMET", "SEATBELT")])
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+### Describe
+
+In Python, the `.describe()` method from the `pandas` module returns several descriptive statistics of interest: mean, median, and quartiles. It is particularly useful for summarizing multiple variables in a data frame. 
+
+```{python}
+bikeround.loc[:,["HELMET", "SEATBELT"]].describe()
+```
+
+:::
+::::::::::::::
+
+## Measures of association
+
+So far, we've been discussing descriptive statistics about a single variable. Now, let's talk about some statistical methods for assessing the *relatedness* between two different variables using **the covariance and correlation** statistics. 
+
+For now, our discussion is limited to association between *two continuous* variables. Later, we will see methods for assessing associations between two *ordinal* variables, two *nominal* variables, and *one continuous and one categorical* variables. 
+
+### Covariance
+
+Recall that an important measure of the dispersion or variability of a single variable is the *variance*, calculated as: 
+
+$$ Var(X) = s^{2} = \frac {\sum_{i=1}^{n} (x_{i} - \bar X)^{2}} {n - 1} $$
+
+The **covariance** between to random variables, *X* and *Y*, can be calculated in a similar manner (again, in a sampling context): 
+
+$$ Cov(X,Y) = \frac {\sum_{i=1}^{n} (x_{i} - \bar X) (y_{i} - \bar Y)} {n - 1} $$
+
+The covariance, like the variance, depends upon the deviation of individual observations of each variable around each mean. Note that its units (and magnitude) are dependent upon the units and relative sizes of each variable. 
+
+### Correlation
+
+Just as the standard deviation was a more easily interpreted (and comparable) version of the variance, the **correlation** (specifically, the Pearson product-moment correlation) is a standardized and unitless version of the covariance. It is simply the covariance divided by the standard deviations $s_{X},s_{Y}$ of both variables: 
+
+$$ Corr(X,Y) = r =  \frac {Cov(X,Y)} {s_{X} s_{Y}} $$
+
+The correlation between two variables can range from -1 to 1, with the following interpretations: 
+
+a. If $-1 \le r < 0$, then the two variables are negatively correlated; as one increases, the other tends to decrease. 
+b. If $r = 0$, then the two variables are not correlated; there is no association between the two. 
+c. If $0 > r \ge 1$, then the two variables are positively correlated; as one increases, the other tends to increase. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, you can use the following functions: 
+
+* *Covariance*: `cov()`
+* *Correlation*: `cor()`
+    * or calculate from `cov()` and `sd()`
+
+Let's describe the association between the variables `HELMET` and `SEATBELT`. 
+
+```{r}
+# Covariance
+cov(bikeround$HELMET, bikeround$SEATBELT)
+
+# Correlation
+cor(bikeround$HELMET, bikeround$SEATBELT)
+```
+
+Remember how we used `na.rm=T` to remove `NA` values? This is generally how most functions work with missing data in R. An exception is for `cov()` and `cor()`. Since these compare two different datasets, the functions deal with missing data through the `use=` parameter (see help for details). I usually use `pairwise.complete.obs` option because it uses as much data as possible. 
+
+```{r}
+# Covariance
+cov(bikeround$HELMET, bikeround$SEATBELT, use="pairwise.complete.obs")
+
+# Correlation
+cor(bikeround$HELMET, bikeround$SEATBELT, use="pairwise.complete.obs")
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, you can use the following functions: 
+
+* *Covariance*: `.cov()` method from the `pandas` module
+    * or `covariance()` from the `statistics` module
+    * or `cov()` from the `numpy` module
+* *Correlation*: `.corr()` method from the `pandas` module
+    * 
+    * or `corrcoef()` from the `numpy` module
+
+Let's describe the association between the variables `HELMET` and `SEATBELT`. 
+
+```{python}
+# Covariance
+bikeround["HELMET"].cov(bikeround["SEATBELT"])
+
+# Correlation
+bikeround["HELMET"].corr(bikeround["SEATBELT"])
+```
+
+Most Python functions from `pandas` module remove missing values (`nan`) by default. 
+
+:::
+::::::::::::::
+
+### Other measures of association
+
+The Pearson product-moment correlation described above is actually only appropriate for *two continuous variables* that are approximately normally distributed. Sometimes we have one or two variables that may not satisfy these requirements. 
+
+In the case of *two ordinal variables*, alternative correlation parameters are available that use the relative rankings of each observation on each variable: [*Spearman's rho*](https://en.wikipedia.org/wiki/Spearman%27s_rank_correlation_coefficient) and [*Kendall's tau*](https://en.wikipedia.org/wiki/Kendall_rank_correlation_coefficient) rank correlation coefficients. 
+
+In the case of *two nominal/categorical/discrete variables*, there are also several other correlations that are appropriate when both variables are ordered or unordered categorical variables: [*Phi*](https://en.wikipedia.org/wiki/Phi_coefficient) (for two binary variables) and [*Cramer's V*](https://en.wikipedia.org/wiki/Cram%C3%A9r%27s_V) (for two nominal variables). 
+
+Other measures of association rely on more complex statistical inferential tests, which will be discussed in a later tutorial. These include the *chi-squared test* for two categorical variables and the *t-test* for a continuous variable and a categorical variable. 
+
+:::::::::::::: {.columns}
+::: {.column width="49%"}
+
+In R, you can use the same `cor()` function for continuous ordinal variables; just add `method="spearman"` or `method="kendall"` as an argument inside the function. 
+
+For instance, let's calculate the association between `ATT_BIKE` (attitudes about bicycling) and `ATT_DRIVE` (attitudes about driving), each rated on a 1-4 ordinal scale. 
+
+```{r}
+# Create factors
+bikeround$ATT_BIKE <- factor(bikeround$ATT_BIKE, levels=c("Strongly disagree", "Somewhat disagree", "Somewhat agree", "Strongly agree"))
+bikeround$ATT_DRIVE <- factor(bikeround$ATT_DRIVE, levels=c("Strongly disagree", "Somewhat disagree", "Somewhat agree", "Strongly agree"))
+
+# Spearman's rho
+cor(as.integer(bikeround$ATT_BIKE), as.integer(bikeround$ATT_DRIVE), method="spearman", use="pairwise.complete.obs")
+
+# Kendall's tau
+cor(as.integer(bikeround$ATT_BIKE), as.integer(bikeround$ATT_DRIVE), method="kendall", use="pairwise.complete.obs")
+```
+
+Functions to calculation various types of correlations are available in the [*psych* package](https://cran.r-project.org/web/packages/psych/index.html) and the [*rcompanion* package*](https://cran.r-project.org/web/packages/rcompanion/index.html). 
+
+```{r}
+# Load packages
+# install.packages("psych")
+# install.packages("rcompanion")
+library("psych")
+library("rcompanion")
+
+# Phi
+phi(table(bikeround$WORK, bikeround$STUD))
+
+# Cramer's V
+cramerV(bikeround$HHINC, bikeround$EDUC)
+```
+
+:::
+::: {.column width="02%"}
+
+:::
+::: {.column width="49%"}
+
+In Python, you can use the same `.corr()` method for continuous ordinal variables; just add `method="spearman"` or `method="kendall"` as an argument inside the function. 
+
+For instance, let's calculate the association between `ATT_BIKE` (attitudes about bicycling) and `ATT_DRIVE` (attitudes about driving), each rated on a 1-4 ordinal scale. 
+
+```{python}
+# Create categorical variable
+categories = ["Strongly disagree", "Somewhat disagree", "Somewhat agree", "Strongly agree"]
+bikeround['ATT_BIKE'] = pd.Categorical(bikeround['ATT_BIKE'], categories=categories)
+bikeround['ATT_DRIVE'] = pd.Categorical(bikeround['ATT_DRIVE'], categories=categories)
+del categories
+
+# Convert to integers, remove nan
+bike_codes = bikeround['ATT_BIKE'].cat.codes
+drive_codes = bikeround['ATT_DRIVE'].cat.codes
+valid = (bike_codes != -1) & (drive_codes != -1)
+bike_codes = bike_codes[valid]
+drive_codes = drive_codes[valid]
+del valid
+
+# Spearman's rho
+bike_codes.corr(drive_codes, method="spearman")
+
+# Kendall's tau
+bike_codes.corr(drive_codes, method="kendall")
+```
+
+:::
+::::::::::::::
+
+## Review
+
+* Can you load a CSV file into R or Python? 
+* Can you identify and explain the meaning of measures of centrality (or central tendency), dispersion (or variability), and the shape of the distribution of a variable? 
+* Can you calculate the mean, median, mode, range, variance, standard deviation, coefficient of variation, skewness, and kurtosis of a variable? 
+* Can you identify and explain the meaning of measures of association between two variables? 
+* Can you calculate the correlation and covariance between two continuous variables? 
+
+**END**
