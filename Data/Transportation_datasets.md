@@ -114,12 +114,12 @@ I have processed the longer and more detailed Numetric crash data (see above) al
 * Crash information, for that year: (CRASH_): total (ALL), by injury severity (K, A, B, C, O), single-vehicle (ONEVEH), improperly restrained or unrestrained (SEATBELT), and pedestrian and bicycle (PED, BIKE).
 
 **Download the dataset (crashes_segments) and data processing scripts**
-* **CSV format: https://raw.githubusercontent.com/singletonpa/usu-course-transport-data-research/refs/heads/main/Data/Utah_crash_data_segments/crashes_segments.csv**
-* **RDS format: https://raw.githubusercontent.com/singletonpa/usu-course-transport-data-research/refs/heads/main/Data/Utah_crash_data_segments/crashes_segments.rds**
+* **CSV format: https://raw.githubusercontent.com/singletonpa/usu-course-transport-data-research/main/Data/Utah_crash_data_segments/crashes_segments.csv**
+* **RDS format: https://raw.githubusercontent.com/singletonpa/usu-course-transport-data-research/main/Data/Utah_crash_data_segments/crashes_segments.rds**
 * R scripts:
-  * Processing crash data: [utah_crashes.R](https://raw.githubusercontent.com/singletonpa/usu-course-transport-data-research/refs/heads/main/Data/Utah_crash_data_segments/utah_crashes.R)
-  * Processing segments: [utah_roads.R](https://raw.githubusercontent.com/singletonpa/usu-course-transport-data-research/refs/heads/main/Data/Utah_crash_data_segments/utah_roads.R)
-  * Processing other data: [utah_roadway.R](https://raw.githubusercontent.com/singletonpa/usu-course-transport-data-research/refs/heads/main/Data/Utah_crash_data_segments/utah_roadway.R) and [utah_aadt.R](https://raw.githubusercontent.com/singletonpa/usu-course-transport-data-research/refs/heads/main/Data/Utah_crash_data_segments/utah_aadt.R)
+  * Processing crash data: [utah_crashes.R](https://raw.githubusercontent.com/singletonpa/usu-course-transport-data-research/main/Data/Utah_crash_data_segments/utah_crashes.R)
+  * Processing segments: [utah_roads.R](https://raw.githubusercontent.com/singletonpa/usu-course-transport-data-research/main/Data/Utah_crash_data_segments/utah_roads.R)
+  * Processing other data: [utah_roadway.R](https://raw.githubusercontent.com/singletonpa/usu-course-transport-data-research/main/Data/Utah_crash_data_segments/utah_roadway.R) and [utah_aadt.R](https://raw.githubusercontent.com/singletonpa/usu-course-transport-data-research/main/Data/Utah_crash_data_segments/utah_aadt.R)
 
 ## Swissmetro data
 
